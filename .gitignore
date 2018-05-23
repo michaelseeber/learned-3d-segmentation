@@ -1,5 +1,4 @@
 
-reconstruction/
 reconstruction/model
 .vscodereconstruction/scenes/scene0000_00/scene0000_00.sens
 reconstruction/scenes/scene0000_00/converted/groundtruth_datacost.npz
