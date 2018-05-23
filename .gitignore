@@ -1,8 +1,7 @@
 
 reconstruction/model
-.vscodereconstruction/scenes/scene0000_00/scene0000_00.sens
+.vscode
+reconstruction/scenes/scene0000_00/scene0000_00.sens
 reconstruction/scenes/scene0000_00/converted/groundtruth_datacost.npz
 reconstruction/scenes/scene0000_00/converted/datacost.npz
-
-
 reconstruction/scenes
