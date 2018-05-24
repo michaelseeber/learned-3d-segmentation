@@ -48,7 +48,7 @@ def segment(model_path, data_path):
     return eval_one_epoch(sess, ops, data_path)
 
 
-def eval_one_epoch(sess, ops, room_path):
+def eval_one_epoch(sess, ops, data_path):
     is_training = False
 
     current_data, current_label = indoor3d_util.room2blocks_wrapper_normalized(room_path, NUM_POINT)
@@ -89,32 +89,16 @@ def eval_one_epoch(sess, ops, room_path):
             pts[:,8] *= max_room_z
             pts[:,3:6] *= 255.0
             pred = pred_label[b, :]
-            for i in range(NUM_POINT):
-                color = indoor3d_util.g_label2color[pred[i]]
-                fout.write('v %f %f %f %d %d %d\n' % (pts[i,6], pts[i,7], pts[i,8], color[0], color[1], color[2]))
-                # TODO create pointcloud and then voxalize
+            # for i in range(NUM_POINT):
+            #     color = indoor3d_util.g_label2color[pred[i]]
+            #     fout.write('v %f %f %f %d %d %d\n' % (pts[i,6], pts[i,7], pts[i,8], color[0], color[1], color[2]))
+            #     # TODO create pointcloud and then voxalize
 
         #add points to dataframe and create cloud
         cloud = PytnCloud(pd.DataFrame({'x': pts[:, 6], 'y': pts[:, 7], 'z': pts[:, 8], 'label': pred_label[b, :]}))
 
-        correct = np.sum(pred_label == current_label[start_idx:end_idx,:])
-        total_correct += correct
-        total_seen += (cur_batch_size*NUM_POINT)
-        loss_sum += (loss_val*BATCH_SIZE)
-        for i in range(start_idx, end_idx):
-            for j in range(NUM_POINT):
-                l = current_label[i, j]
-                total_seen_class[l] += 1
-                total_correct_class[l] += (pred_label[i-start_idx, j] == l)
-
-    log_string('eval mean loss: %f' % (loss_sum / float(total_seen/NUM_POINT)))
-    log_string('eval accuracy: %f'% (total_correct / float(total_seen)))
-    fout_data_label.close()
-    fout_gt_label.close()
-    if FLAGS.visu:
-        fout.close()
-        fout_gt.close()
-    return total_correct, total_seen
+        
+   
 
 
     
