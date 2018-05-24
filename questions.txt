@@ -1,0 +1,5 @@
+PointCloud currently uses 9 dim input namelz XYZ RGB and normalized location normalized location as to the room (from 0 to 1)
+
+Scannet pointcloud after fusion only XYZ RGB but color not useful i.e. all red.
+
+scene clean / 2 / 2.0 i.e. what use for training of segmentation network the clean ones?
