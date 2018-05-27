@@ -3,3 +3,8 @@ PointCloud currently uses 9 dim input namelz XYZ RGB and normalized location nor
 Scannet pointcloud after fusion only XYZ RGB but color not useful i.e. all red.
 
 scene clean / 2 / 2.0 i.e. what use for training of segmentation network the clean ones?
+
+random sample from mesh provided -> what with lables
+
+color lables???? colored by nyu40 labels ply property 'label' denotes the ScanNet label id
+    used the ScanNet lable id as the color doesnt match the nyu40 from convert_scannet

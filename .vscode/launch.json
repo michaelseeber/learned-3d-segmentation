@@ -5,8 +5,17 @@
     "version": "0.2.0",
     "configurations": [
 
+
         {
             "name": "Python: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+        
+        },
+
+        {
+            "name": "Python: Custom Args",
             "type": "python",
             "request": "launch",
             "program": "${file}",
@@ -21,7 +30,7 @@
         {
             "name": "Python: Attach",
             "type": "python",
-            "request": "attach",
+            "request": "attach",a
             "localRoot": "${workspaceFolder}",
             "remoteRoot": "${workspaceFolder}",
             "port": 3000,

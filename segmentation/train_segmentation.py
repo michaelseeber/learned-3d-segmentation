@@ -11,7 +11,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.dirname(BASE_DIR)
 sys.path.append(BASE_DIR)
 sys.path.append(ROOT_DIR)
-sys.path.append(os.path.join(ROOT_DIR, 'utils'))
+sys.path.append(os.path.join(BASE_DIR, 'utils'))
 import provider
 import tf_util
 from model import *
@@ -44,8 +44,8 @@ DECAY_RATE = FLAGS.decay_rate
 
 LOG_DIR = FLAGS.log_dir
 if not os.path.exists(LOG_DIR): os.mkdir(LOG_DIR)
-os.system('cp model.py %s' % (LOG_DIR)) # bkp of model def
-os.system('cp train_segmentation.py %s' % (LOG_DIR)) # bkp of train procedure
+# os.system('cp model.py %s' % (LOG_DIR)) # bkp of model def
+# os.system('cp train_segmentation.py %s' % (LOG_DIR)) # bkp of train procedure
 LOG_FOUT = open(os.path.join(LOG_DIR, 'log_train.txt'), 'w')
 LOG_FOUT.write(str(FLAGS)+'\n')
 
@@ -61,37 +61,18 @@ BN_DECAY_CLIP = 0.99
 
 DATA_PATH = '/scratch/thesis/data/scenes/scene0000_00'
 
-# TODO Load scene0000
+# TODO for scenelist....currently just scene0000_00
 pointcloud = PyntCloud.from_file(os.path.join(DATA_PATH, "scene0000_00_vh_clean_2.ply"))
 labels = PyntCloud.from_file(os.path.join(DATA_PATH, "scene0000_00_vh_clean_2.labels.ply"))
+# print(pointcloud.get_sample("mesh_random", n=1, rgb=True))
+train_data = pointcloud.points.drop('alpha', axis=1)
+# train_label = labels.points.drop(['x', 'y', 'z', 'alpha'], axis = 1) with color
+train_label = labels.points[['label']] #nyu40 labeling
 
-
-# for h5_filename in ALL_FILES:
-#     data_batch, label_batch = provider.loadDataFile(h5_filename)
-#     data_batch_list.append(data_batch)
-#     label_batch_list.append(label_batch)
-# data_batches = np.concatenate(data_batch_list, 0)
-# label_batches = np.concatenate(label_batch_list, 0)
-# print(data_batches.shape)
-# print(label_batches.shape)
-
-
-# train_idxs = []
-# test_idxs = []
-# for i,room_name in enumerate(room_filelist):
-#     if test_area in room_name:
-#         test_idxs.append(i)
-#     else:
-#         train_idxs.append(i)
-
-train_data = data_batches[train_idxs,...]
-train_label = label_batches[train_idxs]
-# test_data = data_batches[test_idxs,...]
-# test_label = label_batches[test_idxs]
 print(train_data.shape, train_label.shape)
 # print(test_data.shape, test_label.shape)
 
-
+print(train_label.head(5))
 
 
 def log_string(out_str):
