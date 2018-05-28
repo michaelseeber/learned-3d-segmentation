@@ -8,3 +8,6 @@ random sample from mesh provided -> what with lables
 
 color lables???? colored by nyu40 labels ply property 'label' denotes the ScanNet label id
     used the ScanNet lable id as the color doesnt match the nyu40 from convert_scannet
+
+
+blocks for pointnet dataset, samples
