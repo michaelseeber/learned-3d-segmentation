@@ -17,6 +17,7 @@ import tf_util
 from model import *
 
 parser = argparse.ArgumentParser()
+parser.add_argument('--data_path', required = True)
 parser.add_argument('--gpu', type=int, default=0, help='GPU to use [default: GPU 0]')
 parser.add_argument('--log_dir', default='log', help='Log dir [default: log]')
 parser.add_argument('--num_point', type=int, default=4096, help='Point number [default: 4096]')
@@ -31,6 +32,8 @@ parser.add_argument('--decay_rate', type=float, default=0.5, help='Decay rate fo
 FLAGS = parser.parse_args()
 
 
+
+DATA_PATH = FLAGS.data_path
 BATCH_SIZE = FLAGS.batch_size
 NUM_POINT = FLAGS.num_point
 MAX_EPOCH = FLAGS.max_epoch
@@ -42,7 +45,7 @@ OPTIMIZER = FLAGS.optimizer
 DECAY_STEP = FLAGS.decay_step
 DECAY_RATE = FLAGS.decay_rate
 
-LOG_DIR = FLAGS.log_dir
+LOG_DIR = os.path.join(BASE_DIR, FLAGS.log_dir)
 if not os.path.exists(LOG_DIR): os.mkdir(LOG_DIR)
 # os.system('cp model.py %s' % (LOG_DIR)) # bkp of model def
 # os.system('cp train_segmentation.py %s' % (LOG_DIR)) # bkp of train procedure
@@ -58,21 +61,18 @@ BN_DECAY_DECAY_RATE = 0.5
 BN_DECAY_DECAY_STEP = float(DECAY_STEP)
 BN_DECAY_CLIP = 0.99
 
-
-DATA_PATH = '/scratch/thesis/data/scenes/scene0000_00'
-
 # TODO for scenelist....currently just scene0000_00
 pointcloud = PyntCloud.from_file(os.path.join(DATA_PATH, "scene0000_00_vh_clean_2.ply"))
 labels = PyntCloud.from_file(os.path.join(DATA_PATH, "scene0000_00_vh_clean_2.labels.ply"))
 # print(pointcloud.get_sample("mesh_random", n=1, rgb=True))
-train_data = pointcloud.points.drop('alpha', axis=1)
+train_data = pointcloud.points.drop('alpha', axis=1).values
 # train_label = labels.points.drop(['x', 'y', 'z', 'alpha'], axis = 1) with color
-train_label = labels.points[['label']] #nyu40 labeling
+train_label = labels.points[['label']].values #nyu40 labeling
 
 print(train_data.shape, train_label.shape)
 # print(test_data.shape, test_label.shape)
 
-print(train_label.head(5))
+print(train_label[0:5])
 
 
 def log_string(out_str):
@@ -165,7 +165,7 @@ def train():
             sys.stdout.flush()
              
             train_one_epoch(sess, ops, train_writer)
-            eval_one_epoch(sess, ops, test_writer)
+            #eval_one_epoch(sess, ops, test_writer)
             
             # Save the variables to disk.
             if epoch % 10 == 0:
@@ -179,7 +179,7 @@ def train_one_epoch(sess, ops, train_writer):
     is_training = True
     
     log_string('----')
-    current_data, current_label, _ = provider.shuffle_data(train_data[:,0:NUM_POINT,:], train_label) 
+    current_data, current_label, _ = provider.shuffle_data(train_data[0:NUM_POINT,:], train_label) 
     
     file_size = current_data.shape[0]
     num_batches = file_size // BATCH_SIZE

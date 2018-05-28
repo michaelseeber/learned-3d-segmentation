@@ -13,6 +13,25 @@
             "program": "${file}",
         
         },
+        {
+            "name": "Segmentation Linux",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "args": [
+                "--data_path" , "/scratch/thesis/data/scenes/scene0000_00"
+    
+            ]
+        },
+        {
+            "name": "Segmentation Windows",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "args": [
+                "--data_path" , "C:/Users/michi/OneDrive/Dokumente/ETH/BachelorThesis/code/thesis/data/scenes/scene0000_00"
+            ]
+        },
 
         {
             "name": "Python: Custom Args",
