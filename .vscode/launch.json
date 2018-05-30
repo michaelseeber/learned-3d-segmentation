@@ -47,15 +47,17 @@
             ]
         },
         {
-            "name": "Python: Attach",
+            "name": "Python Attach",
             "type": "python",
-            "request": "attach",a
+            "request": "attach",
             "localRoot": "${workspaceFolder}",
-            "remoteRoot": "${workspaceFolder}",
-            "port": 3000,
-            "secret": "my_secret",
-            "host": "localhost"
+            "remoteRoot": "/scratch/thesis/segmentation",  // Set to the program location on the remote computer.
+            "port": 3000,                   // Set to the remote port
+            "secret": "thesis",          // Set to your specific secret
+            "host": "192.33.89.41" ,              // Set to your remote host
+
         },
+        
         {
             "name": "Python: Terminal (integrated)",
             "type": "python",

@@ -17,11 +17,10 @@ import tf_util
 from model import *
 
 
-import ptvsd
-# Allow other computers to attach to ptvsd at this IP address and port, using the secret
-ptvsd.enable_attach("thesis", address = ('192.33.89.41', 3000))
-# Pause the program until a remote debugger is attached
-ptvsd.wait_for_attach()
+if os.path.exists("/scratch/thesis/HIL"):
+    import ptvsd
+    ptvsd.enable_attach("thesis", address = ('192.33.89.41', 3000))
+    ptvsd.wait_for_attach()
 
 
 
