@@ -11,3 +11,6 @@ color lables???? colored by nyu40 labels ply property 'label' denotes the ScanNe
 
 
 blocks for pointnet dataset, samples
+
+
+scannet training: feed in voxelgrid with each voxel just semantic info? no color etc
