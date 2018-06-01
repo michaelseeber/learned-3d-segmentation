@@ -3,7 +3,6 @@ import glob
 import argparse
 import numpy as np
 import tensorflow as tf
-import segment from segmentation.py
 
 
 EPSILON = 10e-8

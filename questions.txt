@@ -1,10 +1,24 @@
-PointCloud currently uses 9 dim input namelz XYZ RGB and normalized location normalized location as to the room (from 0 to 1)
+Meeting 1.6.2018
 
-Scannet pointcloud after fusion only XYZ RGB but color not useful i.e. all red.
 
-scene clean / 2 / 2.0 i.e. what use for training of segmentation network the clean ones?
+Dataset:
+    Scannet: scene clean / 2 / 2.0 i.e. what use for training of segmentation network the clean ones?
 
-random sample from mesh provided -> what with lables
+    Feeding scannet into pointnet:
+    color lables???? colored by nyu40 labels, but .ply property 'label' denotes the ScanNet label id -> convert? with what to work
+    (used the ScanNet lable id as the color doesnt match the nyu40 from convert_scannet)
+
+    PointNet currently uses 9 dim input namelz XYZ RGB and normalized location normalized location as to the room (from 0 to 1)
+    -> how to handle for scannet? rooms etc?
+
+    PointNet: train_data is Batch x Samples from block x 9 -> samples from block??
+
+scannet training: feed in voxelgrid with each voxel just semantic info? no color etc
+
+
+
+
+
 
 color lables???? colored by nyu40 labels ply property 'label' denotes the ScanNet label id
     used the ScanNet lable id as the color doesnt match the nyu40 from convert_scannet
@@ -13,4 +27,3 @@ color lables???? colored by nyu40 labels ply property 'label' denotes the ScanNe
 blocks for pointnet dataset, samples
 
 
-scannet training: feed in voxelgrid with each voxel just semantic info? no color etc
