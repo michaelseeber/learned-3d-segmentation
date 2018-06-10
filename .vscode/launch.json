@@ -50,7 +50,7 @@
             "name": "Python Attach",
             "type": "python",
             "request": "attach",
-            "localRoot": "${workspaceFolder}",
+            "localRoot": "${workspaceFolder}/segmentation",
             "remoteRoot": "/scratch/thesis/segmentation",  // Set to the program location on the remote computer.
             "port": 3000,                   // Set to the remote port
             "secret": "thesis",          // Set to your specific secret

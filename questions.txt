@@ -3,6 +3,7 @@ Meeting 1.6.2018
 
 Dataset:
     Scannet: scene clean / 2 / 2.0 i.e. what use for training of segmentation network the clean ones?
+        scan_clean2
 
     Feeding scannet into pointnet:
     color lables???? colored by nyu40 labels, but .ply property 'label' denotes the ScanNet label id -> convert? with what to work
@@ -11,19 +12,25 @@ Dataset:
     PointNet currently uses 9 dim input namelz XYZ RGB and normalized location normalized location as to the room (from 0 to 1)
     -> how to handle for scannet? rooms etc?
 
-    PointNet: train_data is Batch x Samples from block x 9 -> samples from block??
+    PointNet: train_data is Batch x Samples from block x 9 -> how to define block and then sample for scannet dataset
 
-scannet training: feed in voxelgrid with each voxel just semantic info? no color etc
-
-
+scannet training: feed in voxelgrid with each voxel just semantic info? no color etc? tsdf?
 
 
+train_segmentation      -> train Pointnet
+train_reconstruction    -> train LearningPriors: what to use? with output from pointnet
+
+Evaluation:
+First step:
+    reconstruct.py -> feed pointcloud into segment.py -> get point segmentation -> convert to voxelgrid -> run reconstructtion
+Second step:
+    reconstruct.py -> feed pointcloud into segment.py -> get point segmentation -> do reconstruction from points???
 
 
-color lables???? colored by nyu40 labels ply property 'label' denotes the ScanNet label id
-    used the ScanNet lable id as the color doesnt match the nyu40 from convert_scannet
+
+shift to center: X - X_average
 
 
-blocks for pointnet dataset, samples
 
+checked what martin meant by signing smth?
 

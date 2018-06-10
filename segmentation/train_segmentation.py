@@ -28,9 +28,8 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--data_path', required = True)
 parser.add_argument('--gpu', type=int, default=0, help='GPU to use [default: GPU 0]')
 parser.add_argument('--log_dir', default='log', help='Log dir [default: log]')
-parser.add_argument('--num_point', type=int, default=4096, help='Point number [default: 4096]')
 parser.add_argument('--max_epoch', type=int, default=50, help='Epoch to run [default: 50]')
-parser.add_argument('--batch_size', type=int, default=24, help='Batch Size during training [default: 24]')
+parser.add_argument('--batch_size', type=int, default=3000, help='Batch Size during training [default: 3000]')
 parser.add_argument('--learning_rate', type=float, default=0.001, help='Initial learning rate [default: 0.001]')
 parser.add_argument('--momentum', type=float, default=0.9, help='Initial learning rate [default: 0.9]')
 parser.add_argument('--optimizer', default='adam', help='adam or momentum [default: adam]')
@@ -43,9 +42,7 @@ FLAGS = parser.parse_args()
 
 DATA_PATH = FLAGS.data_path
 BATCH_SIZE = FLAGS.batch_size
-NUM_POINT = FLAGS.num_point
 MAX_EPOCH = FLAGS.max_epoch
-NUM_POINT = FLAGS.num_point
 BASE_LEARNING_RATE = FLAGS.learning_rate
 GPU_INDEX = FLAGS.gpu
 MOMENTUM = FLAGS.momentum
@@ -60,8 +57,7 @@ if not os.path.exists(LOG_DIR): os.mkdir(LOG_DIR)
 LOG_FOUT = open(os.path.join(LOG_DIR, 'log_train.txt'), 'w')
 LOG_FOUT.write(str(FLAGS)+'\n')
 
-MAX_NUM_POINT = 4096
-NUM_CLASSES = 13
+NUM_CLASSES = 13 
 
 BN_INIT_DECAY = 0.5
 BN_DECAY_DECAY_RATE = 0.5
@@ -112,7 +108,7 @@ def get_bn_decay(batch):
 def train():
     with tf.Graph().as_default():
         with tf.device('/gpu:'+str(GPU_INDEX)):
-            pointclouds_pl, labels_pl = placeholder_inputs(BATCH_SIZE, NUM_POINT)
+            pointclouds_pl, labels_pl = placeholder_inputs(BATCH_SIZE)
             is_training_pl = tf.placeholder(tf.bool, shape=())
             
             # Note the global_step=batch parameter to minimize. 
@@ -187,7 +183,7 @@ def train_one_epoch(sess, ops, train_writer):
     is_training = True
     
     log_string('----')
-    current_data, current_label, _ = provider.shuffle_data(train_data[0:NUM_POINT,:], train_label) 
+    current_data, current_label, _ = provider.shuffle_data(train_data, train_label) 
     
     file_size = current_data.shape[0]
     num_batches = file_size // BATCH_SIZE
@@ -202,7 +198,7 @@ def train_one_epoch(sess, ops, train_writer):
         start_idx = batch_idx * BATCH_SIZE
         end_idx = (batch_idx+1) * BATCH_SIZE
         
-        feed_dict = {ops['pointclouds_pl']: current_data[start_idx:end_idx, :, :],
+        feed_dict = {ops['pointclouds_pl']: current_data[start_idx:end_idx, :],
                      ops['labels_pl']: current_label[start_idx:end_idx],
                      ops['is_training_pl']: is_training,}
         summary, step, _, loss_val, pred_val = sess.run([ops['merged'], ops['step'], ops['train_op'], ops['loss'], ops['pred']],
@@ -211,7 +207,7 @@ def train_one_epoch(sess, ops, train_writer):
         pred_val = np.argmax(pred_val, 2)
         correct = np.sum(pred_val == current_label[start_idx:end_idx])
         total_correct += correct
-        total_seen += (BATCH_SIZE*NUM_POINT)
+        total_seen += BATCH_SIZE
         loss_sum += loss_val
     
     log_string('mean loss: %f' % (loss_sum / float(num_batches)))

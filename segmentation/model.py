@@ -9,21 +9,18 @@ ROOT_DIR = os.path.dirname(BASE_DIR)
 sys.path.append(os.path.join(ROOT_DIR, 'utils'))
 import tf_util
 
-def placeholder_inputs(batch_size, num_point):
-    pointclouds_pl = tf.placeholder(tf.float32,
-                                     shape=(batch_size, num_point, 9))
-    labels_pl = tf.placeholder(tf.int32,
-                                shape=(batch_size, num_point))
+def placeholder_inputs(batch_size):
+    pointclouds_pl = tf.placeholder(tf.float32, shape=(batch_size, 6))
+    labels_pl = tf.placeholder(tf.int32, shape=(batch_size))
     return pointclouds_pl, labels_pl
 
 def get_model(point_cloud, is_training, bn_decay=None):
     """ ConvNet baseline, input is BxNx3 gray image """
     batch_size = point_cloud.get_shape()[0].value
-    num_point = point_cloud.get_shape()[1].value
 
     input_image = tf.expand_dims(point_cloud, -1)
     # CONV
-    net = tf_util.conv2d(input_image, 64, [1,9], padding='VALID', stride=[1,1],
+    net = tf_util.conv2d(input_image, 64, [1,6], padding='VALID', stride=[1,1],
                          bn=True, is_training=is_training, scope='conv1', bn_decay=bn_decay)
     net = tf_util.conv2d(net, 64, [1,1], padding='VALID', stride=[1,1],
                          bn=True, is_training=is_training, scope='conv2', bn_decay=bn_decay)
