@@ -1,3 +1,5 @@
 
 reconstruction/model
 data/scenes
+segmentation/log
+segmentation/__pycache__
