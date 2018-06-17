@@ -1,3 +1,25 @@
+
+removed blocks -> but "bad" accuracy because local context lost?
+
+why actually center? what about scale/roatation invariance
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+////////////////////////////////////////////////////////////
 Meeting 1.6.2018
 
 

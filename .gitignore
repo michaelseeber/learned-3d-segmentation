@@ -7,3 +7,5 @@ HIL
 segmentation/__pycache__/model.cpython-35.pyc
 segmentation/log/log_train.txt
 segmentation/log
+
+segmentation/model

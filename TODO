@@ -1,8 +1,2 @@
-room to block inside indoor3_util.py
-
-
-LABLEs???
-data file -> color = real color
-label file -> color = some label color
-
-    Visualization of aggregated semantic segmentation; colored by nyu40 labels (see img/legend; ply property 'label' denotes the ScanNet label id)
+DONE - Normalze/center pntcloud
+OPEN - LABLES??? -> EMAIL

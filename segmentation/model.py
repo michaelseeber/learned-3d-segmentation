@@ -9,6 +9,8 @@ ROOT_DIR = os.path.dirname(BASE_DIR)
 sys.path.append(os.path.join(ROOT_DIR, 'utils'))
 import tf_util
 
+NUM_CLASSES = 32
+
 def placeholder_inputs(batch_size):
     pointclouds_pl = tf.placeholder(tf.float32, shape=(batch_size, 6))
     labels_pl = tf.placeholder(tf.int32, shape=(batch_size))
@@ -51,7 +53,7 @@ def get_model(point_cloud, is_training, bn_decay=None):
                          bn=True, is_training=is_training, scope='conv7')
     net = tf_util.dropout(net, keep_prob=0.7, is_training=is_training, scope='dp1')
     # 32 different lables in scene0000
-    net = tf_util.conv2d(net, 32, [1,1], padding='VALID', stride=[1,1],
+    net = tf_util.conv2d(net, NUM_CLASSES, [1,1], padding='VALID', stride=[1,1],
                          activation_fn=None, scope='conv8')
     net = tf.squeeze(net)
 
@@ -65,7 +67,7 @@ def get_loss(pred, label):
 
 if __name__ == "__main__":
     with tf.Graph().as_default():
-        a = tf.placeholder(tf.float32, shape=(32,4096,9))
+        a = tf.placeholder(tf.float32, shape=(4096,6))
         net = get_model(a, tf.constant(True))
         with tf.Session() as sess:
             init = tf.global_variables_initializer()
@@ -73,5 +75,5 @@ if __name__ == "__main__":
             start = time.time()
             for i in range(100):
                 print(i)
-                sess.run(net, feed_dict={a:np.random.rand(32,4096,9)})
+                sess.run(net, feed_dict={a:np.random.rand(4096,6)})
             print(time.time() - start)

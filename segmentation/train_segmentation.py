@@ -57,7 +57,7 @@ if not os.path.exists(LOG_DIR): os.mkdir(LOG_DIR)
 LOG_FOUT = open(os.path.join(LOG_DIR, 'log_train.txt'), 'w')
 LOG_FOUT.write(str(FLAGS)+'\n')
 
-NUM_CLASSES = 13 
+NUM_CLASSES = 32
 
 BN_INIT_DECAY = 0.5
 BN_DECAY_DECAY_RATE = 0.5
@@ -68,16 +68,23 @@ BN_DECAY_CLIP = 0.99
 # TODO for scenelist....currently just scene0000_00
 pointcloud = PyntCloud.from_file(os.path.join(DATA_PATH, "scene0000_00_vh_clean_2.ply"))
 labels = PyntCloud.from_file(os.path.join(DATA_PATH, "scene0000_00_vh_clean_2.labels.ply"))
-# print(pointcloud.get_sample("mesh_random", n=1, rgb=True))
+
+# Center PointCloud
+pointcloud.points['x'] = (pointcloud.points['x'] - pointcloud.points['x'].mean())
+pointcloud.points['y'] = (pointcloud.points['y'] - pointcloud.points['y'].mean())
+pointcloud.points['z'] = (pointcloud.points['z'] - pointcloud.points['z'].mean())
 
 train_data = pointcloud.points.drop('alpha', axis=1).values
 train_label = np.squeeze(labels.points[['label']].values) #scannet ids
-
 #-----TEMPORARY--------
 # Map scnanet id's into range 0-31 
 # covnert back to scannet id's through SCANNET_MAPPING[train_label]
 print(train_label[20:150])
 SCANNET_MAPPING, train_label = np.unique(train_label, return_inverse=True)
+
+
+test_data = train_data
+test_label = train_label
 
 # print(test_data.shape, test_label.shape)
 
@@ -172,7 +179,7 @@ def train():
             sys.stdout.flush()
              
             train_one_epoch(sess, ops, train_writer)
-            #eval_one_epoch(sess, ops, test_writer)
+            # eval_one_epoch(sess, ops, test_writer)
             
             # Save the variables to disk.
             if epoch % 10 == 0:
@@ -196,8 +203,8 @@ def train_one_epoch(sess, ops, train_writer):
     loss_sum = 0
     
     for batch_idx in range(num_batches):
-        # if batch_idx % 100 == 0:
-        print('Current batch/total batch num: %d/%d'%(batch_idx,num_batches))
+        if batch_idx % 10 == 0:
+            print('Current batch/total batch num: %d/%d'%(batch_idx,num_batches))
         start_idx = batch_idx * BATCH_SIZE
         end_idx = (batch_idx+1) * BATCH_SIZE
         
@@ -227,7 +234,7 @@ def eval_one_epoch(sess, ops, test_writer):
     total_correct_class = [0 for _ in range(NUM_CLASSES)]
     
     log_string('----')
-    current_data = test_data[:,0:NUM_POINT,:]
+    current_data = test_data
     current_label = np.squeeze(test_label)
     
     file_size = current_data.shape[0]
@@ -237,24 +244,23 @@ def eval_one_epoch(sess, ops, test_writer):
         start_idx = batch_idx * BATCH_SIZE
         end_idx = (batch_idx+1) * BATCH_SIZE
 
-        feed_dict = {ops['pointclouds_pl']: current_data[start_idx:end_idx, :, :],
+        feed_dict = {ops['pointclouds_pl']: current_data[start_idx:end_idx, :],
                      ops['labels_pl']: current_label[start_idx:end_idx],
                      ops['is_training_pl']: is_training}
         summary, step, loss_val, pred_val = sess.run([ops['merged'], ops['step'], ops['loss'], ops['pred']],
                                       feed_dict=feed_dict)
         test_writer.add_summary(summary, step)
-        pred_val = np.argmax(pred_val, 2)
+        pred_val = np.argmax(pred_val, 1)
         correct = np.sum(pred_val == current_label[start_idx:end_idx])
         total_correct += correct
-        total_seen += (BATCH_SIZE*NUM_POINT)
-        loss_sum += (loss_val*BATCH_SIZE)
+        total_seen += BATCH_SIZE
+        loss_sum += loss_val
         for i in range(start_idx, end_idx):
-            for j in range(NUM_POINT):
-                l = current_label[i, j]
-                total_seen_class[l] += 1
-                total_correct_class[l] += (pred_val[i-start_idx, j] == l)
+            l = current_label[i]
+            total_seen_class[l] += 1
+            total_correct_class[l] += (pred_val[i-start_idx] == l)
             
-    log_string('eval mean loss: %f' % (loss_sum / float(total_seen/NUM_POINT)))
+    log_string('eval mean loss: %f' % (loss_sum / float(total_seen)))
     log_string('eval accuracy: %f'% (total_correct / float(total_seen)))
     log_string('eval avg class acc: %f' % (np.mean(np.array(total_correct_class)/np.array(total_seen_class,dtype=np.float))))
 
