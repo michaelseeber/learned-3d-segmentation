@@ -1,0 +1,118 @@
+Namespace(batch_size=3000, data_path='/scratch/thesis/data/scenes/scene0000_00', decay_rate=0.5, decay_step=300000, gpu=0, learning_rate=0.001, log_dir='model', max_epoch=200, momentum=0.9, optimizer='adam')
+**** EPOCH 000 ****
+----
+mean loss: 1.919027
+accuracy: 0.467012
+Model saved in file: /scratch/thesis/segmentation/model/model.ckpt
+**** EPOCH 001 ****
+----
+mean loss: 1.165221
+accuracy: 0.613506
+**** EPOCH 002 ****
+----
+mean loss: 0.936145
+accuracy: 0.674160
+**** EPOCH 003 ****
+----
+mean loss: 0.803106
+accuracy: 0.713556
+**** EPOCH 004 ****
+----
+mean loss: 0.715779
+accuracy: 0.740099
+**** EPOCH 005 ****
+----
+mean loss: 0.668873
+accuracy: 0.754284
+**** EPOCH 006 ****
+----
+mean loss: 0.631357
+accuracy: 0.765383
+**** EPOCH 007 ****
+----
+mean loss: 0.600582
+accuracy: 0.775889
+**** EPOCH 008 ****
+----
+mean loss: 0.565606
+accuracy: 0.788272
+**** EPOCH 009 ****
+----
+mean loss: 0.553722
+accuracy: 0.791506
+**** EPOCH 010 ****
+----
+mean loss: 0.541039
+accuracy: 0.794383
+Model saved in file: /scratch/thesis/segmentation/model/model.ckpt
+**** EPOCH 011 ****
+----
+mean loss: 0.516312
+accuracy: 0.804148
+**** EPOCH 012 ****
+----
+mean loss: 0.503825
+accuracy: 0.809667
+**** EPOCH 013 ****
+----
+mean loss: 0.498437
+accuracy: 0.811531
+**** EPOCH 014 ****
+----
+mean loss: 0.488424
+accuracy: 0.815160
+**** EPOCH 015 ****
+----
+mean loss: 0.477032
+accuracy: 0.818395
+**** EPOCH 016 ****
+----
+mean loss: 0.473034
+accuracy: 0.819420
+**** EPOCH 017 ****
+----
+mean loss: 0.468758
+accuracy: 0.822025
+**** EPOCH 018 ****
+----
+mean loss: 0.467941
+accuracy: 0.820506
+**** EPOCH 019 ****
+----
+mean loss: 0.462640
+accuracy: 0.824840
+**** EPOCH 020 ****
+----
+mean loss: 0.459383
+accuracy: 0.824864
+Model saved in file: /scratch/thesis/segmentation/model/model.ckpt
+**** EPOCH 021 ****
+----
+mean loss: 0.454859
+accuracy: 0.826346
+**** EPOCH 022 ****
+----
+mean loss: 0.454964
+accuracy: 0.827395
+**** EPOCH 023 ****
+----
+mean loss: 0.451676
+accuracy: 0.826901
+**** EPOCH 024 ****
+----
+mean loss: 0.449040
+accuracy: 0.829309
+**** EPOCH 025 ****
+----
+mean loss: 0.450470
+accuracy: 0.827136
+**** EPOCH 026 ****
+----
+mean loss: 0.448960
+accuracy: 0.828358
+**** EPOCH 027 ****
+----
+mean loss: 0.448023
+accuracy: 0.828519
+**** EPOCH 028 ****
+----

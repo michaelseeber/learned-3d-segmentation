@@ -17,17 +17,17 @@ import tf_util
 from model import *
 
 
-if os.path.exists("/scratch/thesis/HIL"):
-    import ptvsd
-    ptvsd.enable_attach("thesis", address = ('192.33.89.41', 3000))
-    ptvsd.wait_for_attach()
+# if os.path.exists("/scratch/thesis/HIL"):
+#     import ptvsd
+#     ptvsd.enable_attach("thesis", address = ('192.33.89.41', 3000))
+#     ptvsd.wait_for_attach()
 
 
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--data_path', required = True)
 parser.add_argument('--gpu', type=int, default=0, help='GPU to use [default: GPU 0]')
-parser.add_argument('--log_dir', default='log', help='Log dir [default: log]')
+parser.add_argument('--log_dir', default='model', help='Log dir [default: log]')
 parser.add_argument('--max_epoch', type=int, default=50, help='Epoch to run [default: 50]')
 parser.add_argument('--batch_size', type=int, default=3000, help='Batch Size during training [default: 3000]')
 parser.add_argument('--learning_rate', type=float, default=0.001, help='Initial learning rate [default: 0.001]')
@@ -69,14 +69,17 @@ BN_DECAY_CLIP = 0.99
 pointcloud = PyntCloud.from_file(os.path.join(DATA_PATH, "scene0000_00_vh_clean_2.ply"))
 labels = PyntCloud.from_file(os.path.join(DATA_PATH, "scene0000_00_vh_clean_2.labels.ply"))
 # print(pointcloud.get_sample("mesh_random", n=1, rgb=True))
+
 train_data = pointcloud.points.drop('alpha', axis=1).values
-# train_label = labels.points.drop(['x', 'y', 'z', 'alpha'], axis = 1) with color
-train_label = labels.points[['label']].values #nyu40 labeling
+train_label = np.squeeze(labels.points[['label']].values) #scannet ids
 
-print(train_data.shape, train_label.shape)
+#-----TEMPORARY--------
+# Map scnanet id's into range 0-31 
+# covnert back to scannet id's through SCANNET_MAPPING[train_label]
+print(train_label[20:150])
+SCANNET_MAPPING, train_label = np.unique(train_label, return_inverse=True)
+
 # print(test_data.shape, test_label.shape)
-
-print(train_label[0:5])
 
 
 def log_string(out_str):
@@ -122,8 +125,8 @@ def train():
             loss = get_loss(pred, labels_pl)
             tf.summary.scalar('loss', loss)
 
-            correct = tf.equal(tf.argmax(pred, 2), tf.to_int64(labels_pl))
-            accuracy = tf.reduce_sum(tf.cast(correct, tf.float32)) / float(BATCH_SIZE*NUM_POINT)
+            correct = tf.equal(tf.argmax(pred, 1), tf.to_int64(labels_pl))
+            accuracy = tf.reduce_sum(tf.cast(correct, tf.float32)) / float(BATCH_SIZE)
             tf.summary.scalar('accuracy', accuracy)
 
             # Get training operator
@@ -193,8 +196,8 @@ def train_one_epoch(sess, ops, train_writer):
     loss_sum = 0
     
     for batch_idx in range(num_batches):
-        if batch_idx % 100 == 0:
-            print('Current batch/total batch num: %d/%d'%(batch_idx,num_batches))
+        # if batch_idx % 100 == 0:
+        print('Current batch/total batch num: %d/%d'%(batch_idx,num_batches))
         start_idx = batch_idx * BATCH_SIZE
         end_idx = (batch_idx+1) * BATCH_SIZE
         
@@ -204,7 +207,7 @@ def train_one_epoch(sess, ops, train_writer):
         summary, step, _, loss_val, pred_val = sess.run([ops['merged'], ops['step'], ops['train_op'], ops['loss'], ops['pred']],
                                          feed_dict=feed_dict)
         train_writer.add_summary(summary, step)
-        pred_val = np.argmax(pred_val, 2)
+        pred_val = np.argmax(pred_val, 1)
         correct = np.sum(pred_val == current_label[start_idx:end_idx])
         total_correct += correct
         total_seen += BATCH_SIZE
@@ -254,7 +257,7 @@ def eval_one_epoch(sess, ops, test_writer):
     log_string('eval mean loss: %f' % (loss_sum / float(total_seen/NUM_POINT)))
     log_string('eval accuracy: %f'% (total_correct / float(total_seen)))
     log_string('eval avg class acc: %f' % (np.mean(np.array(total_correct_class)/np.array(total_seen_class,dtype=np.float))))
-         
+
 
 
 if __name__ == "__main__":

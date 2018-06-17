@@ -19,6 +19,8 @@ def get_model(point_cloud, is_training, bn_decay=None):
     batch_size = point_cloud.get_shape()[0].value
 
     input_image = tf.expand_dims(point_cloud, -1)
+    # only one batch
+    input_image = tf.expand_dims(input_image, 0)
     # CONV
     net = tf_util.conv2d(input_image, 64, [1,6], padding='VALID', stride=[1,1],
                          bn=True, is_training=is_training, scope='conv1', bn_decay=bn_decay)
@@ -31,15 +33,15 @@ def get_model(point_cloud, is_training, bn_decay=None):
     points_feat1 = tf_util.conv2d(net, 1024, [1,1], padding='VALID', stride=[1,1],
                          bn=True, is_training=is_training, scope='conv5', bn_decay=bn_decay)
     # MAX
-    pc_feat1 = tf_util.max_pool2d(points_feat1, [num_point,1], padding='VALID', scope='maxpool1')
+    pc_feat1 = tf_util.max_pool2d(points_feat1, [batch_size,1], padding='VALID', scope='maxpool1')
     # FC
-    pc_feat1 = tf.reshape(pc_feat1, [batch_size, -1])
+    pc_feat1 = tf.reshape(pc_feat1, [1, -1])
     pc_feat1 = tf_util.fully_connected(pc_feat1, 256, bn=True, is_training=is_training, scope='fc1', bn_decay=bn_decay)
     pc_feat1 = tf_util.fully_connected(pc_feat1, 128, bn=True, is_training=is_training, scope='fc2', bn_decay=bn_decay)
     print(pc_feat1)
    
     # CONCAT 
-    pc_feat1_expand = tf.tile(tf.reshape(pc_feat1, [batch_size, 1, 1, -1]), [1, num_point, 1, 1])
+    pc_feat1_expand = tf.tile(tf.reshape(pc_feat1, [1, 1, 1, -1]), [1, 3000, 1, 1])
     points_feat1_concat = tf.concat(axis=3, values=[points_feat1, pc_feat1_expand])
     
     # CONV 
@@ -48,15 +50,16 @@ def get_model(point_cloud, is_training, bn_decay=None):
     net = tf_util.conv2d(net, 256, [1,1], padding='VALID', stride=[1,1],
                          bn=True, is_training=is_training, scope='conv7')
     net = tf_util.dropout(net, keep_prob=0.7, is_training=is_training, scope='dp1')
-    net = tf_util.conv2d(net, 13, [1,1], padding='VALID', stride=[1,1],
+    # 32 different lables in scene0000
+    net = tf_util.conv2d(net, 32, [1,1], padding='VALID', stride=[1,1],
                          activation_fn=None, scope='conv8')
-    net = tf.squeeze(net, [2])
+    net = tf.squeeze(net)
 
     return net
 
 def get_loss(pred, label):
-    """ pred: B,N,13
-        label: B,N """
+    """ pred: B,32
+        label: B """
     loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=pred, labels=label)
     return tf.reduce_mean(loss)
 
