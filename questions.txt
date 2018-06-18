@@ -4,6 +4,8 @@ removed blocks -> but "bad" accuracy because local context lost?
 why actually center? what about scale/roatation invariance
 
 
+batch size? NONE?
+
 
 
 
