@@ -3,6 +3,7 @@ import math
 import h5py
 import numpy as np
 import tensorflow as tf
+import pandas as pd
 import socket
 from pyntcloud import PyntCloud
 import os
@@ -14,6 +15,7 @@ sys.path.append(ROOT_DIR)
 sys.path.append(os.path.join(BASE_DIR, 'utils'))
 import provider
 import tf_util
+import label_util
 from model import *
 
 
@@ -57,7 +59,6 @@ if not os.path.exists(LOG_DIR): os.mkdir(LOG_DIR)
 LOG_FOUT = open(os.path.join(LOG_DIR, 'log_train.txt'), 'w')
 LOG_FOUT.write(str(FLAGS)+'\n')
 
-NUM_CLASSES = 32
 
 BN_INIT_DECAY = 0.5
 BN_DECAY_DECAY_RATE = 0.5
@@ -73,8 +74,12 @@ labels = PyntCloud.from_file(os.path.join(DATA_PATH, "scene0000_00_vh_clean_2.la
 pointcloud.points['x'] = (pointcloud.points['x'] - pointcloud.points['x'].mean())
 pointcloud.points['y'] = (pointcloud.points['y'] - pointcloud.points['y'].mean())
 pointcloud.points['z'] = (pointcloud.points['z'] - pointcloud.points['z'].mean())
-
 train_data = pointcloud.points.drop('alpha', axis=1).values
+
+train_label = pd.DataFrame(labels.points['r'], labels.points['g'], labels.points['b'])
+for i in range(labels.points.shape[0]):
+    train_label.append(color2label((labels.points['r'], labels.points['g'], labels.points['b'])))
+
 train_label = np.squeeze(labels.points[['label']].values) #scannet ids
 #-----TEMPORARY--------
 # Map scnanet id's into range 0-31 

@@ -1,10 +1,18 @@
+////////////////////////////////////////
+Meeting 20.6.2018
 
-removed blocks -> but "bad" accuracy because local context lost?
+successful able to train pointnet with Scannet and also segment -> voxalize
 
+removed blocks, Batch now into currently 3000 points and feed into network -> but "bad" accuracy because local context lost? 
 why actually center? what about scale/roatation invariance
 
+many more classes than original paper
 
-batch size? NONE?
+
+
+
+
+
 
 
 
