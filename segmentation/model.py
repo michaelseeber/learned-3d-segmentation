@@ -43,7 +43,7 @@ def get_model(point_cloud, is_training, bn_decay=None):
     print(pc_feat1)
    
     # CONCAT 
-    pc_feat1_expand = tf.tile(tf.reshape(pc_feat1, [1, 1, 1, -1]), [1, 3000, 1, 1])
+    pc_feat1_expand = tf.tile(tf.reshape(pc_feat1, [1, 1, 1, -1]), [1, batch_size, 1, 1])
     points_feat1_concat = tf.concat(axis=3, values=[points_feat1, pc_feat1_expand])
     
     # CONV 
