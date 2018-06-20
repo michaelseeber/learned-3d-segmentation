@@ -41,7 +41,7 @@ LABEL_COLORS = (
     ("bathtub", (187,136,0)),  
     ("bag", (0,185,23)), 
     ("otherstructure", (1,0,103)),
-    ("otherfurniture", (0,0,170)), 
+    ("otherfurniture", (0,0,255)), 
     ("otherprop", (255,0,246)), 
     ("unknown", (0, 0, 0)), 
 )
@@ -50,7 +50,11 @@ CLASSES = tuple(label for label, _ in LABEL_COLORS)
 COLORS = tuple(color for _, color in LABEL_COLORS)
 
 def label2color(label):
-    return COLORS[label]
+        return COLORS[label]
+
 
 def color2label(color):
-    return COLORS.index(color)
+    try:
+        return COLORS.index(color)
+    except:
+        print(color)

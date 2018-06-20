@@ -76,11 +76,14 @@ pointcloud.points['y'] = (pointcloud.points['y'] - pointcloud.points['y'].mean()
 pointcloud.points['z'] = (pointcloud.points['z'] - pointcloud.points['z'].mean())
 train_data = pointcloud.points.drop('alpha', axis=1).values
 
-train_label = pd.DataFrame(labels.points['r'], labels.points['g'], labels.points['b'])
-for i in range(labels.points.shape[0]):
-    train_label.append(color2label((labels.points['r'], labels.points['g'], labels.points['b'])))
+labelcolors = labels.points.drop(['x','y','z','alpha','label'], axis=1).values
+train_label = np.zeros(labelcolors.shape[0])
+for i in range(labelcolors.shape[0]):
+    color = (labelcolors[i, 0], labelcolors[i, 1], labelcolors[i, 2])
+    train_label[i] = label_util.color2label(color)
+# train_label = np.squeeze(labels.points[['label']].values) #scannet ids
 
-train_label = np.squeeze(labels.points[['label']].values) #scannet ids
+
 #-----TEMPORARY--------
 # Map scnanet id's into range 0-31 
 # covnert back to scannet id's through SCANNET_MAPPING[train_label]
