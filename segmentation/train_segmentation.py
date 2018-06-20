@@ -66,6 +66,8 @@ BN_DECAY_DECAY_RATE = 0.5
 BN_DECAY_DECAY_STEP = float(DECAY_STEP)
 BN_DECAY_CLIP = 0.99
 
+NUM_CLASSES = 42
+
 # TODO for scenelist....currently just scene0000_00
 pointcloud = PyntCloud.from_file(os.path.join(DATA_PATH, "scene0000_00_vh_clean_2.ply"))
 labels = PyntCloud.from_file(os.path.join(DATA_PATH, "scene0000_00_vh_clean_2.labels.ply"))
@@ -267,10 +269,11 @@ def eval_one_epoch(sess, ops, test_writer):
             l = current_label[i]
             total_seen_class[l] += 1
             total_correct_class[l] += (pred_val[i-start_idx] == l)
-            
+
     log_string('eval mean loss: %f' % (loss_sum / float(total_seen)))
     log_string('eval accuracy: %f'% (total_correct / float(total_seen)))
     log_string('eval avg class acc: %f' % (np.mean(np.array(total_correct_class)/np.array(total_seen_class,dtype=np.float))))
+    # log_string(np.array(total_correct_class)/np.array(total_seen_class,dtype=np.float))
 
 
 

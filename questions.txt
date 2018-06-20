@@ -1,12 +1,22 @@
 ////////////////////////////////////////
 Meeting 20.6.2018
 
-successful able to train pointnet with Scannet and also segment -> voxalize
+successfull able to train pointnet with Scannet scenes. 
+Restoring the variabels for segmentation works in general, but one problem with variabels or so, bc always same label predicted
+manual voxalize and feed into reconstruction worked too
+Next steps: Solve prediction problem + combine all steps + refactor code
 
-removed blocks, Batch now into currently 3000 points and feed into network -> but "bad" accuracy because local context lost? 
-why actually center? what about scale/roatation invariance
+removed blocks, Batch now into currently 3000 points and feed into network
+training accuracy/loss looks good but per class accuracy very low - many more classes than original paper
+what about scale/roatation invariance
 
-many more classes than original paper
+next steps after everything is combined? how to replace voxels by points, i.e. what should i try, where to start?
+
+
+Other:
+checked what martin meant by signing smth?
+still no access to HIL building with my legi.
+
 
 
 
