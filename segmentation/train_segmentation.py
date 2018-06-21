@@ -83,6 +83,8 @@ train_label = np.zeros(labelcolors.shape[0])
 for i in range(labelcolors.shape[0]):
     color = (labelcolors[i, 0], labelcolors[i, 1], labelcolors[i, 2])
     train_label[i] = label_util.color2label(color)
+
+print(train_label.unique()
 # train_label = np.squeeze(labels.points[['label']].values) #scannet ids
 
 
@@ -189,10 +191,11 @@ def train():
             sys.stdout.flush()
              
             train_one_epoch(sess, ops, train_writer)
-            # eval_one_epoch(sess, ops, test_writer)
+      
             
             # Save the variables to disk.
             if epoch % 10 == 0:
+                eval_one_epoch(sess, ops, test_writer)
                 save_path = saver.save(sess, os.path.join(LOG_DIR, "model.ckpt"))
                 log_string("Model saved in file: %s" % save_path)
 
@@ -272,8 +275,8 @@ def eval_one_epoch(sess, ops, test_writer):
 
     log_string('eval mean loss: %f' % (loss_sum / float(total_seen)))
     log_string('eval accuracy: %f'% (total_correct / float(total_seen)))
-    log_string('eval avg class acc: %f' % (np.mean(np.array(total_correct_class)/np.array(total_seen_class,dtype=np.float))))
-    # log_string(np.array(total_correct_class)/np.array(total_seen_class,dtype=np.float))
+    # log_string('eval avg class acc: %f' % (np.mean(np.array(total_correct_class)/np.array(total_seen_class,dtype=np.float))))
+    print(np.array(total_correct_class)/np.array(total_seen_class,dtype=np.float))
 
 
 
