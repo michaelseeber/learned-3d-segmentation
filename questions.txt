@@ -1,4 +1,39 @@
 ////////////////////////////////////////
+Next Meeting+
+
+
+Problem: always same prediction -> class imbalance
+
+Things done:
+    "fake data" with just one label -> got that label as expected with 100% -> "no preprocessing/prediction bug"
+
+Dataset:
+    3 scenes 0001_00, 0002_00 and 0003_00 similar, however labeling quite strange? (cabinet vs. otherfurniture etc...)
+
+
+Blocks removed -> really just becuase of memory?
+"global context" that gets concatenated from block? -> audrey once said per scene, but this would mean I need to not build batches over scenes?
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+////////////////////////////////////////
 Meeting 20.6.2018
 
 successfull able to train pointnet with Scannet scenes. 

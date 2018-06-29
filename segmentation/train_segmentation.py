@@ -19,10 +19,10 @@ import label_util
 from model import *
 
 
-# if os.path.exists("/scratch/thesis/HIL"):
-#     import ptvsd
-#     ptvsd.enable_attach("thesis", address = ('192.33.89.41', 3000))
-#     ptvsd.wait_for_attach()
+if os.path.exists("/scratch/thesis/HIL"):
+    import ptvsd
+    ptvsd.enable_attach("thesis", address = ('192.33.89.41', 3000))
+    ptvsd.wait_for_attach()
 
 
 
@@ -31,7 +31,7 @@ parser.add_argument('--data_path', required = True)
 parser.add_argument('--gpu', type=int, default=0, help='GPU to use [default: GPU 0]')
 parser.add_argument('--log_dir', default='model', help='Log dir [default: log]')
 parser.add_argument('--max_epoch', type=int, default=50, help='Epoch to run [default: 50]')
-parser.add_argument('--batch_size', type=int, default=3000, help='Batch Size during training [default: 3000]')
+parser.add_argument('--batch_size', type=int, default=10000, help='Batch Size during training [default: 3000]')
 parser.add_argument('--learning_rate', type=float, default=0.001, help='Initial learning rate [default: 0.001]')
 parser.add_argument('--momentum', type=float, default=0.9, help='Initial learning rate [default: 0.9]')
 parser.add_argument('--optimizer', default='adam', help='adam or momentum [default: adam]')
@@ -66,39 +66,67 @@ BN_DECAY_DECAY_RATE = 0.5
 BN_DECAY_DECAY_STEP = float(DECAY_STEP)
 BN_DECAY_CLIP = 0.99
 
-NUM_CLASSES = 42
+NUM_CLASSES = 41
 
-# TODO for scenelist....currently just scene0000_00
-pointcloud = PyntCloud.from_file(os.path.join(DATA_PATH, "scene0000_00_vh_clean_2.ply"))
-labels = PyntCloud.from_file(os.path.join(DATA_PATH, "scene0000_00_vh_clean_2.labels.ply"))
+scene_list = []
+with open(os.path.join(DATA_PATH, "list.txt"), "r") as fid:
+    for line in fid:
+        line = line.strip()
+        if line:
+            scene_list.append(line)
+
+
+#Load scenes from disk
+pointcloud = []
+labels = []
+for scene in scene_list:
+    pointcloud.append(PyntCloud.from_file(os.path.join(DATA_PATH, scene, (scene + "_vh_clean_2.ply"))).points)
+    labels.append(PyntCloud.from_file(os.path.join(DATA_PATH,  scene, (scene + "_vh_clean_2.labels.ply"))).points)
+pointcloud = pd.concat(pointcloud)
+labels = pd.concat(labels)
+
 
 # Center PointCloud
-pointcloud.points['x'] = (pointcloud.points['x'] - pointcloud.points['x'].mean())
-pointcloud.points['y'] = (pointcloud.points['y'] - pointcloud.points['y'].mean())
-pointcloud.points['z'] = (pointcloud.points['z'] - pointcloud.points['z'].mean())
-train_data = pointcloud.points.drop('alpha', axis=1).values
+pointcloud['x'] = (pointcloud['x'] - pointcloud['x'].mean())
+pointcloud['y'] = (pointcloud['y'] - pointcloud['y'].mean())
+pointcloud['z'] = (pointcloud['z'] - pointcloud['z'].mean())
+train_data = pointcloud.drop('alpha', axis=1).values
 
-labelcolors = labels.points.drop(['x','y','z','alpha','label'], axis=1).values
-train_label = np.zeros(labelcolors.shape[0])
+
+todelete = []
+# Extract Labels from vertex color
+labelcolors = labels.drop(['x','y','z','alpha','label'], axis=1).values
+train_label = np.zeros(labelcolors.shape[0], dtype=np.int8)
 for i in range(labelcolors.shape[0]):
     color = (labelcolors[i, 0], labelcolors[i, 1], labelcolors[i, 2])
+    if(label_util.color2label(color) == 40):
+        todelete.append(i)
     train_label[i] = label_util.color2label(color)
+train_data = np.delete(train_data, todelete, axis=0)
+train_label = np.delete(train_label, todelete, axis=0)
 
-print(train_label.unique()
+
+#Print statistic about loaded data
+unique_items, counts = np.unique(train_label, return_counts=True)
+for i in range(unique_items.size):
+    print("Label: %3s   |   Class: %15s   |   Count: %6s" % (unique_items[i], label_util.label2class(unique_items[i]) , counts[i] )) 
+# fout = open(os.path.join(DATA_PATH, '_start.obj'), 'w')
+# for i in range(train_data.shape[0]):
+#     color = label_util.label2color(train_label[i])
+#     fout.write('v %f %f %f %d %d %d\n' % (train_data[i,0],train_data[i,1], train_data[i,2], color[0], color[1], color[2]))
+# fout.close()
+
+#-----SCANNET LABELING -------
 # train_label = np.squeeze(labels.points[['label']].values) #scannet ids
-
-
-#-----TEMPORARY--------
 # Map scnanet id's into range 0-31 
 # covnert back to scannet id's through SCANNET_MAPPING[train_label]
-print(train_label[20:150])
-SCANNET_MAPPING, train_label = np.unique(train_label, return_inverse=True)
+# SCANNET_MAPPING, train_label = np.unique(train_label, return_inverse=True)
 
+print(train_label[0:100])
 
 test_data = train_data
 test_label = train_label
 
-# print(test_data.shape, test_label.shape)
 
 
 def log_string(out_str):
@@ -252,7 +280,7 @@ def eval_one_epoch(sess, ops, test_writer):
     
     file_size = current_data.shape[0]
     num_batches = file_size // BATCH_SIZE
-    
+
     for batch_idx in range(num_batches):
         start_idx = batch_idx * BATCH_SIZE
         end_idx = (batch_idx+1) * BATCH_SIZE
@@ -275,8 +303,14 @@ def eval_one_epoch(sess, ops, test_writer):
 
     log_string('eval mean loss: %f' % (loss_sum / float(total_seen)))
     log_string('eval accuracy: %f'% (total_correct / float(total_seen)))
-    # log_string('eval avg class acc: %f' % (np.mean(np.array(total_correct_class)/np.array(total_seen_class,dtype=np.float))))
+    log_string('eval avg class acc: %f' % (np.mean(np.array(total_correct_class)/np.array(total_seen_class,dtype=np.float))))
     print(np.array(total_correct_class)/np.array(total_seen_class,dtype=np.float))
+
+    # unique_predictions, unique_counts = np.unique(np.concat(prediction), return_counts=True)
+    # for i in range(unique_predictions.size):
+    #     print("Label: %3s   |   Class: %15s   |   Count: %6s" % (unique_predictions[i], label_util.label2class(unique_predictions[i]) , counts[i])) 
+
+
 
 
 

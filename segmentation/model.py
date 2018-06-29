@@ -9,7 +9,7 @@ ROOT_DIR = os.path.dirname(BASE_DIR)
 sys.path.append(os.path.join(ROOT_DIR, 'utils'))
 import tf_util
 
-NUM_CLASSES = 32
+NUM_CLASSES = 41
 
 def placeholder_inputs(batch_size):
     pointclouds_pl = tf.placeholder(tf.float32, shape=(batch_size, 6))
@@ -52,7 +52,7 @@ def get_model(point_cloud, is_training, bn_decay=None):
     net = tf_util.conv2d(net, 256, [1,1], padding='VALID', stride=[1,1],
                          bn=True, is_training=is_training, scope='conv7')
     net = tf_util.dropout(net, keep_prob=0.7, is_training=is_training, scope='dp1')
-    # 32 different lables in scene0000
+
     net = tf_util.conv2d(net, NUM_CLASSES, [1,1], padding='VALID', stride=[1,1],
                          activation_fn=None, scope='conv8')
     net = tf.squeeze(net)
