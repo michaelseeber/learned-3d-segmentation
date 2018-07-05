@@ -19,7 +19,7 @@
             "request": "launch",
             "program": "/scratch/thesis/segmentation/train_segmentation.py",
             "args": [
-                "--data_path" , "/scratch/thesis/data/scenes/scene0000_00"
+                "--data_path" , "/scratch/thesis/data/scenes/"
     
             ]
         },

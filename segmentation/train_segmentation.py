@@ -19,10 +19,10 @@ import label_util
 from model import *
 
 
-if os.path.exists("/scratch/thesis/HIL"):
-    import ptvsd
-    ptvsd.enable_attach("thesis", address = ('192.33.89.41', 3000))
-    ptvsd.wait_for_attach()
+# if os.path.exists("/scratch/thesis/HIL"):
+#     import ptvsd
+#     ptvsd.enable_attach("thesis", address = ('192.33.89.41', 3000))
+#     ptvsd.wait_for_attach()
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--data_path', required = True)
@@ -74,38 +74,29 @@ with open(os.path.join(DATA_PATH, "list.txt"), "r") as fid:
 
 
 #Load scenes from disk
-pointcloud = []
-labels = []
+allpoints = []
+alllabels = []
 for scene in scene_list:
-    pointcloud.append(PyntCloud.from_file(os.path.join(DATA_PATH, scene, (scene + "_vh_clean_2.ply"))).points)
-    labels.append(PyntCloud.from_file(os.path.join(DATA_PATH,  scene, (scene + "_vh_clean_2.labels.ply"))).points)
-pointcloud = pd.concat(pointcloud)
-labels = pd.concat(labels)
+    pointcloud = PyntCloud.from_file(os.path.join(DATA_PATH, scene, (scene + "_vh_clean_2.ply"))).points
+    labels = PyntCloud.from_file(os.path.join(DATA_PATH,  scene, (scene + "_vh_clean_2.labels.ply"))).points
 
-# Center PointCloud
-pointcloud['x'] = (pointcloud['x'] - pointcloud['x'].mean())
-pointcloud['y'] = (pointcloud['y'] - pointcloud['y'].mean())
-pointcloud['z'] = (pointcloud['z'] - pointcloud['z'].mean())
-train_data = pointcloud.drop('alpha', axis=1).values
+    # Center PointCloud and remove alpha channel
+    pointcloud['x'] = (pointcloud['x'] - pointcloud['x'].mean())
+    pointcloud['y'] = (pointcloud['y'] - pointcloud['y'].mean())
+    pointcloud['z'] = (pointcloud['z'] - pointcloud['z'].mean())
+    allpoints.append(pointcloud.drop('alpha', axis=1).values)
 
-
-todelete = []
-# Extract Labels from vertex color
-labelcolors = labels.drop(['x','y','z','alpha','label'], axis=1).values
-train_label = np.zeros(labelcolors.shape[0], dtype=np.int8)
-for i in range(labelcolors.shape[0]):
-    color = (labelcolors[i, 0], labelcolors[i, 1], labelcolors[i, 2])
-    # Delte specific labels
-    # if(label_util.color2label(color) == 40):
-        #  todelete.append(i)
-    train_label[i] = label_util.color2label(color)
-train_data = np.delete(train_data, todelete, axis=0)
-train_label = np.delete(train_label, todelete, axis=0)
-
+    # Extract Labels from vertex color
+    labelcolors = labels.drop(['x','y','z','alpha','label'], axis=1).values
+    labels = np.zeros(labelcolors.shape[0], dtype=np.int8)
+    for i in range(labelcolors.shape[0]):
+        color = (labelcolors[i, 0], labelcolors[i, 1], labelcolors[i, 2])
+        labels[i] = label_util.color2label(color)
+    alllabels.append(labels)
 
 
 #Print statistic about loaded data
-unique_items, counts = np.unique(train_label, return_counts=True)
+unique_items, counts = np.unique(alllabels[0], return_counts=True)
 for i in range(unique_items.size):
     print("Label: %3s   |   Class: %15s   |   Count: %6s" % (unique_items[i], label_util.label2class(unique_items[i]) , counts[i] )) 
 # fout = open(os.path.join(DATA_PATH, '_start.obj'), 'w')
@@ -123,16 +114,17 @@ for i in range(unique_items.size):
 
 # Preprocessing
 labelweights = np.zeros(NUM_CLASSES)
-tmp, _ = np.histogram(train_label, range(NUM_CLASSES+1))
-labelweights += tmp
+for seg in alllabels:
+    tmp, _ = np.histogram(seg, range(NUM_CLASSES+1))
+    labelweights += tmp
 labelweights = labelweights/np.sum(labelweights)
 labelweights = 1/np.log(1.2+labelweights)
 
 def getBlock(index):
-    point_set = train_data[index, 0:3]
-    semantic_seg = train_label[index]
-    coordmax = np.max(point_set, axis=0)
-    coordmin = np.min(point_set, axis=0)
+    point_set = allpoints[index]
+    semantic_seg = alllabels[index]
+    coordmax = np.max(point_set[:,0:3], axis=0)
+    coordmin = np.min(point_set[:,0:3], axis=0)
     samplemin = np.maximum(coordmax-[1.5,1.5,3.0], coordmin)
     samplemin[2] = coordmin[2]
     samplesize = np.minimum(coordmax-samplemin,[1.5,1.5,3.0])
@@ -144,12 +136,12 @@ def getBlock(index):
         currmax = currcenter+[0.75,0.75,1.5]
         currmin[2] = coordmin[2]
         currmax[2] = coordmax[2]
-        currchoice = np.sum((point_set >=(currmin-0.2))*(point_set <=(currmax+0.2)),axis=1)==3
+        currchoice = np.sum((point_set[:,0:3] >=(currmin-0.2))*(point_set[:,0:3] <=(currmax+0.2)),axis=1)==3
         curr_point_set = point_set[currchoice,:]
         curr_semantic_seg = semantic_seg[currchoice]
         if len(curr_semantic_seg)==0:
             continue
-        mask = np.sum((curr_point_set >= (currmin-0.01))*(curr_point_set <= (currmax+0.01)),axis=1)==3
+        mask = np.sum((curr_point_set[:,0:3] >= (currmin-0.01))*(curr_point_set[:,0:3] <= (currmax+0.01)),axis=1)==3
         vidx = np.ceil((curr_point_set[mask,0:3]-currmin)/(currmax-currmin)*[31.0,31.0,62.0])
         vidx = np.unique(vidx[:,0]*31.0*62.0+vidx[:,1]*62.0+vidx[:,2])
         isvalid = np.sum(curr_semantic_seg>0)/len(curr_semantic_seg)>=0.7 and len(vidx)/31.0/31.0/62.0>=0.02
@@ -262,6 +254,7 @@ def train():
 
         ops = {'pointclouds_pl': pointclouds_pl,
                'labels_pl': labels_pl,
+               'sampleweights_pl' : sampleweights_pl,
                'is_training_pl': is_training_pl,
                'pred': pred,
                'loss': loss,
@@ -290,17 +283,17 @@ def train_one_epoch(sess, ops, train_writer):
     
     log_string('----')
     
-    idxs = np.arange(len(train_label))
+    idxs = np.arange(len(allpoints))
     np.random.shuffle(idxs)
 
-    num_batches = len(train_label) // BATCH_SIZE 
+    num_batches = len(allpoints) // BATCH_SIZE 
     
     total_correct = 0
     total_seen = 0
     loss_sum = 0
     
     for batch_idx in range(num_batches):
-        if batch_idx % 100 == 0:
+        if batch_idx % 10 == 0:
             print('Current batch/total batch num: %d/%d'%(batch_idx,num_batches))
         start_idx = batch_idx * BATCH_SIZE
         end_idx = (batch_idx+1) * BATCH_SIZE
@@ -315,7 +308,7 @@ def train_one_epoch(sess, ops, train_writer):
                                          feed_dict=feed_dict)
         train_writer.add_summary(summary, step)
         pred_val = np.argmax(pred_val, 2)
-        correct = np.sum(pred_val == current_label[start_idx:end_idx])
+        correct = np.sum(pred_val == batch_label)
         total_correct += correct
         total_seen += (BATCH_SIZE*NUM_POINT)
         loss_sum += loss_val
