@@ -1,0 +1,32 @@
+tv
+toaster
+cabinet
+couch
+dishrack
+towel
+table
+door
+scale
+desk
+toilet
+sink
+refrigerator
+floor
+trashcan
+laundry basket
+backpack
+window
+pillow
+bed
+clock
+tissue box
+wall
+toaster oven
+stool
+curtain
+microwave
+bookshelf
+shower
+counter
+guitar
+nightstand
