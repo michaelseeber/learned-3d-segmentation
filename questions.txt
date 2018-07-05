@@ -1,5 +1,15 @@
 ////////////////////////////////////////
-Next Meeting+
+Next Meeting
+
+
+T-Net? not in sem_seg
+
+
+
+
+
+
+Email:
 
 
 Problem: always same prediction -> class imbalance

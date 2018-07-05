@@ -4,8 +4,9 @@ data/scenes
 segmentation/log
 segmentation/__pycache__
 HIL
-segmentation/__pycache__/model.cpython-35.pyc
-segmentation/log/log_train.txt
-segmentation/log
+segmentation/__pycache__/
+segmentation/log/
+segmentation/log/
 
 segmentation/model
+
