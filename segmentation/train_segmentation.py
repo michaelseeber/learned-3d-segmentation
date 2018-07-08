@@ -8,29 +8,33 @@ import socket
 from pyntcloud import PyntCloud
 import os
 import sys
+import pickle
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.dirname(BASE_DIR)
 sys.path.append(BASE_DIR)
 sys.path.append(ROOT_DIR)
 sys.path.append(os.path.join(BASE_DIR, 'utils'))
+sys.path.append(os.path.join(ROOT_DIR, 'data'))
 import provider
 import tf_util
 import label_util
 from model import *
+import dataset
 
 
-# if os.path.exists("/scratch/thesis/HIL"):
-#     import ptvsd
-#     ptvsd.enable_attach("thesis", address = ('192.33.89.41', 3000))
-#     ptvsd.wait_for_attach()
+
+if os.path.exists("/scratch/thesis/HIL"):
+    import ptvsd
+    ptvsd.enable_attach("thesis", address = ('192.33.89.41', 3000))
+    ptvsd.wait_for_attach()
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--data_path', required = True)
 parser.add_argument('--gpu', type=int, default=0, help='GPU to use [default: GPU 0]')
 parser.add_argument('--log_dir', default='model', help='Log dir [default: log]')
 parser.add_argument('--num_point', type=int, default=8192, help='Point number [default: 4096]')
-parser.add_argument('--max_epoch', type=int, default=50, help='Epoch to run [default: 50]')
-parser.add_argument('--batch_size', type=int, default=1, help='Batch Size during training [default: 1]')
+parser.add_argument('--max_epoch', type=int, default=5000, help='Epoch to run [default: 50]')
+parser.add_argument('--batch_size', type=int, default=3, help='Batch Size during training [default: 1]')
 parser.add_argument('--learning_rate', type=float, default=0.001, help='Initial learning rate [default: 0.001]')
 parser.add_argument('--momentum', type=float, default=0.9, help='Initial learning rate [default: 0.9]')
 parser.add_argument('--optimizer', default='adam', help='adam or momentum [default: adam]')
@@ -56,7 +60,9 @@ BN_DECAY_DECAY_RATE = 0.5
 BN_DECAY_DECAY_STEP = float(DECAY_STEP)
 BN_DECAY_CLIP = 0.99
 
-NUM_CLASSES = 41
+NUM_CLASSES = 21
+#NUM_CLASSES = 41
+
 
 LOG_DIR = os.path.join(BASE_DIR, FLAGS.log_dir)
 if not os.path.exists(LOG_DIR): os.mkdir(LOG_DIR)
@@ -65,116 +71,40 @@ if not os.path.exists(LOG_DIR): os.mkdir(LOG_DIR)
 LOG_FOUT = open(os.path.join(LOG_DIR, 'log_train.txt'), 'w')
 LOG_FOUT.write(str(FLAGS)+'\n')
 
-scene_list = []
-with open(os.path.join(DATA_PATH, "list.txt"), "r") as fid:
-    for line in fid:
-        line = line.strip()
-        if line:
-            scene_list.append(line)
+TRAIN_DATA = dataset.Block(num_classes = NUM_CLASSES, npoints= NUM_POINT, split = "train")
+TEST_DATA = dataset.Block(num_classes = NUM_CLASSES, npoints= NUM_POINT, split = "test")
+# TEST_WHOLE_SCENE = dataset.WholeScene()
+
+# allpoints = []
+# alllabels =[]
+# for scene in scene_list:
+#     pointcloud = PyntCloud.from_file(os.path.join(DATA_PATH, scene, (scene + "_vh_clean_2.ply"))).points
+#     labels = PyntCloud.from_file(os.path.join(DATA_PATH,  scene, (scene + "_vh_clean_2.labels.ply"))).points
+
+#     # Center PointCloud and remove alpha channel
+#     pointcloud['x'] = (pointcloud['x'] - pointcloud['x'].mean())
+#     pointcloud['y'] = (pointcloud['y'] - pointcloud['y'].mean())
+#     pointcloud['z'] = (pointcloud['z'] - pointcloud['z'].mean())
+#     allpoints.append(pointcloud.drop('alpha', axis=1).values)
+
+#     # Extract Labels from vertex color
+#     labelcolors = labels.drop(['x','y','z','alpha','label'], axis=1).values
+#     labels = np.zeros(labelcolors.shape[0], dtype=np.int8)
+#     for i in range(labelcolors.shape[0]):
+#         color = (labelcolors[i, 0], labelcolors[i, 1], labelcolors[i, 2])
+#         labels[i] = label_util.color2label(color)
+#     alllabels.append(labels)
 
 
-#Load scenes from disk
-allpoints = []
-alllabels = []
-for scene in scene_list:
-    pointcloud = PyntCloud.from_file(os.path.join(DATA_PATH, scene, (scene + "_vh_clean_2.ply"))).points
-    labels = PyntCloud.from_file(os.path.join(DATA_PATH,  scene, (scene + "_vh_clean_2.labels.ply"))).points
-
-    # Center PointCloud and remove alpha channel
-    pointcloud['x'] = (pointcloud['x'] - pointcloud['x'].mean())
-    pointcloud['y'] = (pointcloud['y'] - pointcloud['y'].mean())
-    pointcloud['z'] = (pointcloud['z'] - pointcloud['z'].mean())
-    allpoints.append(pointcloud.drop('alpha', axis=1).values)
-
-    # Extract Labels from vertex color
-    labelcolors = labels.drop(['x','y','z','alpha','label'], axis=1).values
-    labels = np.zeros(labelcolors.shape[0], dtype=np.int8)
-    for i in range(labelcolors.shape[0]):
-        color = (labelcolors[i, 0], labelcolors[i, 1], labelcolors[i, 2])
-        labels[i] = label_util.color2label(color)
-    alllabels.append(labels)
-
-
-#Print statistic about loaded data
-unique_items, counts = np.unique(alllabels[0], return_counts=True)
-for i in range(unique_items.size):
-    print("Label: %3s   |   Class: %15s   |   Count: %6s" % (unique_items[i], label_util.label2class(unique_items[i]) , counts[i] )) 
+#Print statistic about specific scene
+# unique_items, counts = np.unique(alllabels[1], return_counts=True)
+# for i in range(unique_items.size):
+#     print("Label: %3s   |   Class: %15s   |   Count: %6s" % (unique_items[i], label_util.label2class(unique_items[i]) , counts[i] )) 
 # fout = open(os.path.join(DATA_PATH, '_start.obj'), 'w')
 # for i in range(train_data.shape[0]):
 #     color = label_util.label2color(train_label[i])
 #     fout.write('v %f %f %f %d %d %d\n' % (train_data[i,0],train_data[i,1], train_data[i,2], color[0], color[1], color[2]))
 # fout.close()
-
-#-----SCANNET LABELING -------
-# train_label = np.squeeze(labels.points[['label']].values) #scannet ids
-# Map scnanet id's into range 0-31 
-# covnert back to scannet id's through SCANNET_MAPPING[train_label]
-# SCANNET_MAPPING, train_label = np.unique(train_label, return_inverse=True)
-
-
-# Preprocessing
-labelweights = np.zeros(NUM_CLASSES)
-for seg in alllabels:
-    tmp, _ = np.histogram(seg, range(NUM_CLASSES+1))
-    labelweights += tmp
-labelweights = labelweights/np.sum(labelweights)
-labelweights = 1/np.log(1.2+labelweights)
-
-def getBlock(index):
-    point_set = allpoints[index]
-    semantic_seg = alllabels[index]
-    coordmax = np.max(point_set[:,0:3], axis=0)
-    coordmin = np.min(point_set[:,0:3], axis=0)
-    samplemin = np.maximum(coordmax-[1.5,1.5,3.0], coordmin)
-    samplemin[2] = coordmin[2]
-    samplesize = np.minimum(coordmax-samplemin,[1.5,1.5,3.0])
-    samplesize = coordmax[2]-coordmin[2]
-    isvalid = False
-    for i in range(10):
-        currcenter = point_set[np.random.choice(len(semantic_seg),1)[0],0:3]
-        currmin = currcenter-[0.75,0.75,1.5]
-        currmax = currcenter+[0.75,0.75,1.5]
-        currmin[2] = coordmin[2]
-        currmax[2] = coordmax[2]
-        currchoice = np.sum((point_set[:,0:3] >=(currmin-0.2))*(point_set[:,0:3] <=(currmax+0.2)),axis=1)==3
-        curr_point_set = point_set[currchoice,:]
-        curr_semantic_seg = semantic_seg[currchoice]
-        if len(curr_semantic_seg)==0:
-            continue
-        mask = np.sum((curr_point_set[:,0:3] >= (currmin-0.01))*(curr_point_set[:,0:3] <= (currmax+0.01)),axis=1)==3
-        vidx = np.ceil((curr_point_set[mask,0:3]-currmin)/(currmax-currmin)*[31.0,31.0,62.0])
-        vidx = np.unique(vidx[:,0]*31.0*62.0+vidx[:,1]*62.0+vidx[:,2])
-        isvalid = np.sum(curr_semantic_seg>0)/len(curr_semantic_seg)>=0.7 and len(vidx)/31.0/31.0/62.0>=0.02
-        if isvalid:
-            break
-    choice = np.random.choice(len(curr_semantic_seg), NUM_POINT, replace=True)
-    point_set = curr_point_set[choice,:]
-    semantic_seg = curr_semantic_seg[choice]
-    mask = mask[choice]
-    sample_weight = labelweights[semantic_seg]
-    sample_weight *= mask
-    return point_set, semantic_seg, sample_weight
-
-def get_batch_wdp(idxs, start_idx, end_idx):
-    bsize = end_idx-start_idx
-    batch_data = np.zeros((bsize, NUM_POINT, 6))
-    batch_label = np.zeros((bsize, NUM_POINT), dtype=np.int32)
-    batch_sampleweight = np.zeros((bsize, NUM_POINT), dtype=np.float32)
-    for i in range(bsize):
-        ps,seg,smpw = getBlock(idxs[i+start_idx])
-        batch_data[i,...] = ps
-        batch_label[i,:] = seg
-        batch_sampleweight[i,:] = smpw
-
-    dropout_ratio = np.random.random()*0.875 # 0-0.875
-    drop_idx = np.where(np.random.random((ps.shape[0]))<=dropout_ratio)[0]
-    batch_data[i,drop_idx,:] = batch_data[i,0,:]
-    batch_label[i,drop_idx] = batch_label[i,0]
-    batch_sampleweight[i,drop_idx] *= 0
-    return batch_data, batch_label, batch_sampleweight
-# test_data = train_data
-# test_label = train_label
-
 
 
 def log_string(out_str):
@@ -216,7 +146,7 @@ def train():
             tf.summary.scalar('bn_decay', bn_decay)
 
             # Get model and loss 
-            pred = get_model(pointclouds_pl, is_training_pl, bn_decay=bn_decay)
+            pred = get_model(NUM_CLASSES, pointclouds_pl, is_training_pl, bn_decay=bn_decay)
             loss = get_loss(pred, labels_pl, sampleweights_pl)
             tf.summary.scalar('loss', loss)
 
@@ -262,16 +192,17 @@ def train():
                'merged': merged,
                'step': batch}
 
+
         for epoch in range(MAX_EPOCH):
             log_string('**** EPOCH %03d ****' % (epoch))
             sys.stdout.flush()
              
             train_one_epoch(sess, ops, train_writer)
-      
             
             # Save the variables to disk.
-            if epoch % 10 == 0:
+            if epoch % 100 == 0:
                 eval_one_epoch(sess, ops, test_writer)
+
                 save_path = saver.save(sess, os.path.join(LOG_DIR, "model.ckpt"))
                 log_string("Model saved in file: %s" % save_path)
 
@@ -283,10 +214,10 @@ def train_one_epoch(sess, ops, train_writer):
     
     log_string('----')
     
-    idxs = np.arange(len(allpoints))
+    idxs = np.arange(len(TRAIN_DATA))
     np.random.shuffle(idxs)
 
-    num_batches = len(allpoints) // BATCH_SIZE 
+    num_batches = len(TRAIN_DATA) // BATCH_SIZE 
     
     total_correct = 0
     total_seen = 0
@@ -298,10 +229,12 @@ def train_one_epoch(sess, ops, train_writer):
         start_idx = batch_idx * BATCH_SIZE
         end_idx = (batch_idx+1) * BATCH_SIZE
 
-        batch_data, batch_label, batch_smpw = get_batch_wdp(idxs, start_idx, end_idx)
+        batch_data, batch_label, batch_smpw = get_batch_with_dropout(TRAIN_DATA, idxs, start_idx, end_idx)
+
+        batch_data[:,:,0:3] = provider.rotate_point_cloud(batch_data[:,:,0:3])
         
-        feed_dict = {ops['pointclouds_pl']: batch_data[start_idx:end_idx, :, :],
-                     ops['labels_pl']: batch_label[start_idx:end_idx],
+        feed_dict = {ops['pointclouds_pl']: batch_data,
+                     ops['labels_pl']: batch_label,
                      ops['sampleweights_pl']: batch_smpw,
                      ops['is_training_pl']: is_training,}
         summary, step, _, loss_val, pred_val = sess.run([ops['merged'], ops['step'], ops['train_op'], ops['loss'], ops['pred']],
@@ -325,46 +258,105 @@ def eval_one_epoch(sess, ops, test_writer):
     loss_sum = 0
     total_seen_class = [0 for _ in range(NUM_CLASSES)]
     total_correct_class = [0 for _ in range(NUM_CLASSES)]
-    
-    log_string('----')
-    current_data = test_data
-    current_label = np.squeeze(test_label)
-    
-    file_size = current_data.shape[0]
-    num_batches = file_size // BATCH_SIZE
 
+    total_correct_vox = 0
+    total_seen_vox = 0
+    total_seen_class_vox = [0 for _ in range(NUM_CLASSES)]
+    total_correct_class_vox = [0 for _ in range(NUM_CLASSES)]
+
+   
+    log_string('----')
+
+    
+    test_idxs = np.arange(0, len(TEST_DATA))
+    num_batches = len(TEST_DATA)/BATCH_SIZE
+
+    labelweights = np.zeros(21)
+    labelweights_vox = np.zeros(21)
     for batch_idx in range(num_batches):
         start_idx = batch_idx * BATCH_SIZE
         end_idx = (batch_idx+1) * BATCH_SIZE
+        batch_data, batch_label, batch_smpw = get_batch(TEST_DATA, test_idxs, start_idx, end_idx)
 
-        feed_dict = {ops['pointclouds_pl']: current_data[start_idx:end_idx, :, :],
-                     ops['labels_pl']: current_label[start_idx:end_idx],
-                     ops['is_training_pl']: is_training}
+        batch_data[:,:,0:3] = provider.rotate_point_cloud(batch_data[:,:,0:3])
+    
+
+        feed_dict = {ops['pointclouds_pl']: batch_data,
+                     ops['labels_pl']: batch_label,
+                     ops['sampleweights_pl']: batch_smpw,
+                     ops['is_training_pl']: is_training,}
         summary, step, loss_val, pred_val = sess.run([ops['merged'], ops['step'], ops['loss'], ops['pred']],
                                       feed_dict=feed_dict)
         test_writer.add_summary(summary, step)
         pred_val = np.argmax(pred_val, 2)
-        correct = np.sum(pred_val == current_label[start_idx:end_idx])
+        correct = np.sum((pred_val == batch_label) & (batch_label>0) & (batch_smpw>0)) # do not take unkown into account
         total_correct += correct
-        total_seen += (BATCH_SIZE*NUM_POINT)
-        loss_sum += (loss_val*BATCH_SIZE)
-        for i in range(start_idx, end_idx):
-            for j in range(NUM_POINT):
-                l = current_label[i, j]
-                total_seen_class[l] += 1
-                total_correct_class[l] += (pred_val[i-start_idx, j] == l)
+        total_seen += np.sum((batch_label>0) & (batch_smpw>0))
+        loss_sum += loss_val
+        
+        for l in range(NUM_CLASSES):
+                total_seen_class[l] += np.sum((batch_label==l) & (batch_smpw>0))
+                total_correct_class[l] += np.sum((pred_val==l) & (batch_label==l) & (batch_smpw>0))
 
-    log_string('eval mean loss: %f' % (loss_sum / float(total_seen)))
-    log_string('eval accuracy: %f'% (total_correct / float(total_seen)))
-    log_string('eval avg class acc: %f' % (np.mean(np.array(total_correct_class)/np.array(total_seen_class,dtype=np.float))))
-    print(np.array(total_correct_class)/np.array(total_seen_class,dtype=np.float))
+        for b in xrange(batch_label.shape[0]):
+            _, uvlabel, _ = point_cloud_label_to_surface_voxel_label_fast(batch_data[b,batch_smpw[b,:]>0,:], np.concatenate((np.expand_dims(batch_label[b,batch_smpw[b,:]>0],1),np.expand_dims(pred_val[b,batch_smpw[b,:]>0],1)),axis=1), res=0.02)
+            total_correct_vox += np.sum((uvlabel[:,0]==uvlabel[:,1])&(uvlabel[:,0]>0))
+            total_seen_vox += np.sum(uvlabel[:,0]>0)
+            tmp,_ = np.histogram(uvlabel[:,0],range(22))
+            labelweights_vox += tmp
+            for l in range(NUM_CLASSES):
+                    total_seen_class_vox[l] += np.sum(uvlabel[:,0]==l)
+                    total_correct_class_vox[l] += np.sum((uvlabel[:,0]==l) & (uvlabel[:,1]==l))
+
+    log_string('eval mean loss: %f' % (loss_sum / float(num_batches)))
+    log_string('eval point accuracy vox: %f'% (total_correct_vox / float(total_seen_vox)))
+    log_string('eval point avg class acc vox: %f' % (np.mean(np.array(total_correct_class_vox[1:])/(np.array(total_seen_class_vox[1:],dtype=np.float)+1e-6))))
+    log_string('eval point accuracy: %f'% (total_correct / float(total_seen)))
+    log_string('eval point avg class acc: %f' % (np.mean(np.array(total_correct_class[1:])/(np.array(total_seen_class[1:],dtype=np.float)+1e-6))))
+    labelweights_vox = labelweights_vox[1:].astype(np.float32)/np.sum(labelweights_vox[1:].astype(np.float32))
+    caliweights = np.array([0.388,0.357,0.038,0.033,0.017,0.02,0.016,0.025,0.002,0.002,0.002,0.007,0.006,0.022,0.004,0.0004,0.003,0.002,0.024,0.029])
+    log_string('eval point calibrated average acc: %f' % (np.average(np.array(total_correct_class[1:])/(np.array(total_seen_class[1:],dtype=np.float)+1e-6),weights=caliweights)))
+    per_class_str = 'vox based --------'
+    for l in range(1,NUM_CLASSES):
+        per_class_str += 'class %d weight: %f, acc: %f; ' % (l,labelweights_vox[l-1],total_correct_class[l]/float(total_seen_class[l]))
+
 
     # unique_predictions, unique_counts = np.unique(np.concat(prediction), return_counts=True)
     # for i in range(unique_predictions.size):
     #     print("Label: %3s   |   Class: %15s   |   Count: %6s" % (unique_predictions[i], label_util.label2class(unique_predictions[i]) , counts[i])) 
 
 
+def point_cloud_label_to_surface_voxel_label_fast(point_cloud, label, res=0.0484):
+    coordmax = np.max(point_cloud,axis=0)
+    coordmin = np.min(point_cloud,axis=0)
+    nvox = np.ceil((coordmax-coordmin)/res)
+    vidx = np.ceil((point_cloud-coordmin)/res)
+    vidx = vidx[:,0]+vidx[:,1]*nvox[0]+vidx[:,2]*nvox[0]*nvox[1]
+    uvidx, vpidx = np.unique(vidx,return_index=True)
+    if label.ndim==1:
+        uvlabel = label[vpidx]
+    else:
+        assert(label.ndim==2)
+        uvlabel = label[vpidx,:]
+    return uvidx, uvlabel, nvox
 
+def get_batch_with_dropout(data, idxs, start_idx, end_idx):
+    bsize = end_idx-start_idx
+    batch_data = np.zeros((bsize, NUM_POINT, 6))
+    batch_label = np.zeros((bsize, NUM_POINT), dtype=np.int32)
+    batch_sampleweight = np.zeros((bsize, NUM_POINT), dtype=np.float32)
+    for i in range(bsize):
+        ps,seg,smpw = data[idxs[i+start_idx]]
+        batch_data[i,...] = ps
+        batch_label[i,:] = seg
+        batch_sampleweight[i,:] = smpw
+
+    dropout_ratio = np.random.random()*0.875 # 0-0.875
+    drop_idx = np.where(np.random.random((ps.shape[0]))<=dropout_ratio)[0]
+    batch_data[i,drop_idx,:] = batch_data[i,0,:]
+    batch_label[i,drop_idx] = batch_label[i,0]
+    batch_sampleweight[i,drop_idx] *= 0
+    return batch_data, batch_label, batch_sampleweight
 
 
 if __name__ == "__main__":

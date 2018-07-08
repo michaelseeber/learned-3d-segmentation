@@ -2,6 +2,7 @@ import os
 import sys
 
 LABEL_COLORS = (
+    ("unknown", (0, 0, 0)), 
     ("floor", (189,198,255)),
     ("wall", (190,153,112)),
     ("cabinet", (213,255,0)), 
@@ -42,7 +43,6 @@ LABEL_COLORS = (
     ("otherfurniture", (0,0,255)), 
     ("otherprop", (255,0,246)), 
     ("otherstructure", (1,0,103)),
-    ("unknown", (0, 0, 0)), 
 )
 
 CLASSES = tuple(label for label, _ in LABEL_COLORS)

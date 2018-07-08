@@ -9,4 +9,5 @@ segmentation/log/
 segmentation/log/
 
 segmentation/model
+data/preprocessing/data.pickle
 

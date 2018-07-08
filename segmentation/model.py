@@ -9,7 +9,6 @@ ROOT_DIR = os.path.dirname(BASE_DIR)
 sys.path.append(os.path.join(ROOT_DIR, 'utils'))
 import tf_util
 
-NUM_CLASSES = 41
 
 def placeholder_inputs(batch_size, num_point):
     pointclouds_pl = tf.placeholder(tf.float32, shape=(batch_size, num_point, 6))
@@ -17,13 +16,11 @@ def placeholder_inputs(batch_size, num_point):
     sampleweights_pl = tf.placeholder(tf.float32, shape=(batch_size, num_point))
     return pointclouds_pl, labels_pl, sampleweights_pl
 
-def get_model(point_cloud, is_training, bn_decay=None):
+def get_model(num_class, point_cloud, is_training, bn_decay=None):
     batch_size = point_cloud.get_shape()[0].value
     num_point = point_cloud.get_shape()[1].value
     
     input_image = tf.expand_dims(point_cloud, -1)
-    # only one batch
-    # input_image = tf.expand_dims(input_image, 0)
     # CONV
     net = tf_util.conv2d(input_image, 64, [1,6], padding='VALID', stride=[1,1],
                          bn=True, is_training=is_training, scope='conv1', bn_decay=bn_decay)
@@ -53,7 +50,7 @@ def get_model(point_cloud, is_training, bn_decay=None):
     net = tf_util.conv2d(net, 256, [1,1], padding='VALID', stride=[1,1],
                          bn=True, is_training=is_training, scope='conv7')
     net = tf_util.dropout(net, keep_prob=0.7, is_training=is_training, scope='dp1')
-    net = tf_util.conv2d(net, 13, [1,1], padding='VALID', stride=[1,1],
+    net = tf_util.conv2d(net, num_class, [1,1], padding='VALID', stride=[1,1],
                          activation_fn=None, scope='conv8')
     net = tf.squeeze(net, [2])
 
@@ -62,13 +59,13 @@ def get_model(point_cloud, is_training, bn_decay=None):
 def get_loss(pred, label, sampleweight):
     """ pred: B,32
         label: B """
-    loss = tf.losses.sparse_softmax_cross_entropy(logits=pred, labels=label, weights= sampleweight)
-    return tf.reduce_mean(loss)
+    return tf.losses.sparse_softmax_cross_entropy(logits=pred, labels=label, weights= sampleweight)
+    # return tf.reduce_mean(loss)
 
 if __name__ == "__main__":
     with tf.Graph().as_default():
         a = tf.placeholder(tf.float32, shape=(4096,6))
-        net = get_model(a, tf.constant(True))
+        net = get_model(1, a, tf.constant(True))
         with tf.Session() as sess:
             init = tf.global_variables_initializer()
             sess.run(init)

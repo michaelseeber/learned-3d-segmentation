@@ -1,3 +1,13 @@
+preprocessing extra -> speed
+labels not from colors, instead use conversion from tsv file -> less label
+
+"centering pointcloud!"
+
+
+
+
+
+
 ////////////////////////////////////////
 Next Meeting
 
