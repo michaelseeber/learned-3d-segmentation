@@ -59,7 +59,7 @@ def get_model(num_class, point_cloud, is_training, bn_decay=None):
 def get_loss(pred, label, sampleweight):
     """ pred: B,32
         label: B """
-    return tf.losses.sparse_softmax_cross_entropy(logits=pred, labels=label, weights= sampleweight)
+    return tf.losses.sparse_softmax_cross_entropy(logits=pred, labels=label, weights=sampleweight)
     # return tf.reduce_mean(loss)
 
 if __name__ == "__main__":

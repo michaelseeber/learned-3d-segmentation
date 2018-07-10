@@ -17,6 +17,7 @@ sys.path.append(os.path.join(BASE_DIR, 'utils'))
 sys.path.append(os.path.join(ROOT_DIR, 'data'))
 import provider
 import tf_util
+import pc_util as pc
 import label_util
 from model import *
 import dataset
@@ -33,7 +34,7 @@ parser.add_argument('--data_path', required = True)
 parser.add_argument('--gpu', type=int, default=0, help='GPU to use [default: GPU 0]')
 parser.add_argument('--log_dir', default='model', help='Log dir [default: log]')
 parser.add_argument('--num_point', type=int, default=8192, help='Point number [default: 4096]')
-parser.add_argument('--max_epoch', type=int, default=5000, help='Epoch to run [default: 50]')
+parser.add_argument('--max_epoch', type=int, default=50000, help='Epoch to run [default: 50]')
 parser.add_argument('--batch_size', type=int, default=3, help='Batch Size during training [default: 1]')
 parser.add_argument('--learning_rate', type=float, default=0.001, help='Initial learning rate [default: 0.001]')
 parser.add_argument('--momentum', type=float, default=0.9, help='Initial learning rate [default: 0.9]')
@@ -73,7 +74,6 @@ LOG_FOUT.write(str(FLAGS)+'\n')
 
 TRAIN_DATA = dataset.Block(num_classes = NUM_CLASSES, npoints= NUM_POINT, split = "train")
 TEST_DATA = dataset.Block(num_classes = NUM_CLASSES, npoints= NUM_POINT, split = "test")
-# TEST_WHOLE_SCENE = dataset.WholeScene()
 
 # allpoints = []
 # alllabels =[]
@@ -194,7 +194,8 @@ def train():
 
 
         for epoch in range(MAX_EPOCH):
-            log_string('**** EPOCH %03d ****' % (epoch))
+            if epoch % 50 == 0:
+                log_string('**** EPOCH %03d ****' % (epoch))
             sys.stdout.flush()
              
             train_one_epoch(sess, ops, train_writer)
@@ -202,7 +203,7 @@ def train():
             # Save the variables to disk.
             if epoch % 100 == 0:
                 eval_one_epoch(sess, ops, test_writer)
-
+                # eval_whole_scene_one_epoch(sess, ops, test_writer)
                 save_path = saver.save(sess, os.path.join(LOG_DIR, "model.ckpt"))
                 log_string("Model saved in file: %s" % save_path)
 
@@ -224,12 +225,12 @@ def train_one_epoch(sess, ops, train_writer):
     loss_sum = 0
     
     for batch_idx in range(num_batches):
-        if batch_idx % 10 == 0:
+        if batch_idx % 50 == 0:
             print('Current batch/total batch num: %d/%d'%(batch_idx,num_batches))
         start_idx = batch_idx * BATCH_SIZE
         end_idx = (batch_idx+1) * BATCH_SIZE
 
-        batch_data, batch_label, batch_smpw = get_batch_with_dropout(TRAIN_DATA, idxs, start_idx, end_idx)
+        batch_data, batch_label, batch_smpw = get_batch(TRAIN_DATA, idxs, start_idx, end_idx, with_dropout=True)
 
         batch_data[:,:,0:3] = provider.rotate_point_cloud(batch_data[:,:,0:3])
         
@@ -269,7 +270,7 @@ def eval_one_epoch(sess, ops, test_writer):
 
     
     test_idxs = np.arange(0, len(TEST_DATA))
-    num_batches = len(TEST_DATA)/BATCH_SIZE
+    num_batches = len(TEST_DATA)//BATCH_SIZE
 
     labelweights = np.zeros(21)
     labelweights_vox = np.zeros(21)
@@ -298,8 +299,8 @@ def eval_one_epoch(sess, ops, test_writer):
                 total_seen_class[l] += np.sum((batch_label==l) & (batch_smpw>0))
                 total_correct_class[l] += np.sum((pred_val==l) & (batch_label==l) & (batch_smpw>0))
 
-        for b in xrange(batch_label.shape[0]):
-            _, uvlabel, _ = point_cloud_label_to_surface_voxel_label_fast(batch_data[b,batch_smpw[b,:]>0,:], np.concatenate((np.expand_dims(batch_label[b,batch_smpw[b,:]>0],1),np.expand_dims(pred_val[b,batch_smpw[b,:]>0],1)),axis=1), res=0.02)
+        for b in range(batch_label.shape[0]):
+            _, uvlabel, _ = pc.point_cloud_label_to_surface_voxel_label_fast(batch_data[b,batch_smpw[b,:]>0,:], np.concatenate((np.expand_dims(batch_label[b,batch_smpw[b,:]>0],1),np.expand_dims(pred_val[b,batch_smpw[b,:]>0],1)),axis=1), res=0.02)
             total_correct_vox += np.sum((uvlabel[:,0]==uvlabel[:,1])&(uvlabel[:,0]>0))
             total_seen_vox += np.sum(uvlabel[:,0]>0)
             tmp,_ = np.histogram(uvlabel[:,0],range(22))
@@ -318,29 +319,15 @@ def eval_one_epoch(sess, ops, test_writer):
     log_string('eval point calibrated average acc: %f' % (np.average(np.array(total_correct_class[1:])/(np.array(total_seen_class[1:],dtype=np.float)+1e-6),weights=caliweights)))
     per_class_str = 'vox based --------'
     for l in range(1,NUM_CLASSES):
-        per_class_str += 'class %d weight: %f, acc: %f; ' % (l,labelweights_vox[l-1],total_correct_class[l]/float(total_seen_class[l]))
-
+        per_class_str += 'class %d weight: %f, acc: %f; \n' % (l,labelweights_vox[l-1],total_correct_class[l]/float(total_seen_class[l]))
+    # log_string(per_class_str)
 
     # unique_predictions, unique_counts = np.unique(np.concat(prediction), return_counts=True)
     # for i in range(unique_predictions.size):
     #     print("Label: %3s   |   Class: %15s   |   Count: %6s" % (unique_predictions[i], label_util.label2class(unique_predictions[i]) , counts[i])) 
 
 
-def point_cloud_label_to_surface_voxel_label_fast(point_cloud, label, res=0.0484):
-    coordmax = np.max(point_cloud,axis=0)
-    coordmin = np.min(point_cloud,axis=0)
-    nvox = np.ceil((coordmax-coordmin)/res)
-    vidx = np.ceil((point_cloud-coordmin)/res)
-    vidx = vidx[:,0]+vidx[:,1]*nvox[0]+vidx[:,2]*nvox[0]*nvox[1]
-    uvidx, vpidx = np.unique(vidx,return_index=True)
-    if label.ndim==1:
-        uvlabel = label[vpidx]
-    else:
-        assert(label.ndim==2)
-        uvlabel = label[vpidx,:]
-    return uvidx, uvlabel, nvox
-
-def get_batch_with_dropout(data, idxs, start_idx, end_idx):
+def get_batch(data, idxs, start_idx, end_idx, with_dropout=False):
     bsize = end_idx-start_idx
     batch_data = np.zeros((bsize, NUM_POINT, 6))
     batch_label = np.zeros((bsize, NUM_POINT), dtype=np.int32)
@@ -350,12 +337,14 @@ def get_batch_with_dropout(data, idxs, start_idx, end_idx):
         batch_data[i,...] = ps
         batch_label[i,:] = seg
         batch_sampleweight[i,:] = smpw
+    
+    if(with_dropout == True):
+        dropout_ratio = np.random.random()*0.875 # 0-0.875
+        drop_idx = np.where(np.random.random((ps.shape[0]))<=dropout_ratio)[0]
+        batch_data[i,drop_idx,:] = batch_data[i,0,:]
+        batch_label[i,drop_idx] = batch_label[i,0]
+        batch_sampleweight[i,drop_idx] *= 0
 
-    dropout_ratio = np.random.random()*0.875 # 0-0.875
-    drop_idx = np.where(np.random.random((ps.shape[0]))<=dropout_ratio)[0]
-    batch_data[i,drop_idx,:] = batch_data[i,0,:]
-    batch_label[i,drop_idx] = batch_label[i,0]
-    batch_sampleweight[i,drop_idx] *= 0
     return batch_data, batch_label, batch_sampleweight
 
 

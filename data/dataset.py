@@ -16,13 +16,13 @@ class Block():
         if split=='train':
             labelweights = np.zeros(self.num_classes)
             for seg in self.alllabels:
-                tmp,_ = np.histogram(seg,range(22))
+                tmp,_ = np.histogram(seg,range(self.num_classes+1))
                 labelweights += tmp
             labelweights = labelweights.astype(np.float32)
             labelweights = labelweights/np.sum(labelweights)
             self.labelweights = 1/np.log(1.2+labelweights)
         elif split=='test':
-            self.labelweights = np.ones(self.num_classes-1)
+            self.labelweights = np.ones(self.num_classes)
 
     def __getitem__(self, index):
         point_set = self.allpoints[index]
@@ -92,8 +92,8 @@ class WholeScene():
     def __getitem__(self, index):
         point_set_ini = self.allpoints[index]
         semantic_seg_ini = np.squeeze(self.alllabels[index].astype(np.int32))
-        coordmax = np.max(point_set_ini,axis=0)
-        coordmin = np.min(point_set_ini,axis=0)
+        coordmax = np.max(point_set_ini[:,0:3],axis=0)
+        coordmin = np.min(point_set_ini[:,0:3],axis=0)
         nsubvolume_x = np.ceil((coordmax[0]-coordmin[0])/1.5).astype(np.int32)
         nsubvolume_y = np.ceil((coordmax[1]-coordmin[1])/1.5).astype(np.int32)
         point_sets = list()
@@ -104,12 +104,12 @@ class WholeScene():
             for j in range(nsubvolume_y):
                 curmin = coordmin+[i*1.5,j*1.5,0]
                 curmax = coordmin+[(i+1)*1.5,(j+1)*1.5,coordmax[2]-coordmin[2]]
-                curchoice = np.sum((point_set_ini>=(curmin-0.2))*(point_set_ini<=(curmax+0.2)),axis=1)==3
+                curchoice = np.sum((point_set_ini[:,0:3]>=(curmin-0.2))*(point_set_ini[:,0:3]<=(curmax+0.2)),axis=1)==3
                 cur_point_set = point_set_ini[curchoice,:]
                 cur_semantic_seg = semantic_seg_ini[curchoice]
                 if len(cur_semantic_seg)==0:
                     continue
-                mask = np.sum((cur_point_set>=(curmin-0.001))*(cur_point_set<=(curmax+0.001)),axis=1)==3
+                mask = np.sum((cur_point_set[:,0:3]>=(curmin-0.001))*(cur_point_set[:,0:3]<=(curmax+0.001)),axis=1)==3
                 choice = np.random.choice(len(cur_semantic_seg), self.npoints, replace=True)
                 point_set = cur_point_set[choice,:] # Nx3
                 semantic_seg = cur_semantic_seg[choice] # N

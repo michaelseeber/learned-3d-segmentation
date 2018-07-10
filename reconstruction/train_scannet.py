@@ -543,48 +543,38 @@ def build_data_generator_pointNet(scene_path, scene_list, params):
     nslices = params["nslices"]
     nclasses = params["nclasses"]
 
-    scene_list = []
-    with open(scene_list_path, "r") as fid:
-        for line in fid:
-            line = line.strip()
-            if line:
-                scene_list.append(line)
 
     # Load the data for all scenes.
     datacosts = []
     groundtruths = []
-    for i, scene_name in enumerate(scene_list):
-        print("Loading {} [{}/{}]".format(scene_name, i + 1, len(scene_list)))
+   
 
-        # if len(datacosts) == 5:
-        #     break
+    datacost_path = os.path.join(scene_path, scene_name,"converted",
+                                    "datacost.npz")
+    groundtruth_path = os.path.join(scene_path, scene_name, "converted",
+                                    "groundtruth_model/probs.npz")
 
-        datacost_path = os.path.join(scene_path, scene_name,"converted",
-                                     "datacost.npz")
-        groundtruth_path = os.path.join(scene_path, scene_name, "converted",
-                                        "groundtruth_model/probs.npz")
+    if not os.path.exists(datacost_path):
+        print("  Warning: datacost does not exist: {}".format(datacost_path))
+        continue
 
-        if not os.path.exists(datacost_path):
-            print("  Warning: datacost does not exist: {}".format(datacost_path))
-            continue
+    if not os.path.exists(groundtruth_path):
+        print("  Warning: groundtruth does not exist: {}".format(groundtruth_path))
+        continue
 
-        if not os.path.exists(groundtruth_path):
-            print("  Warning: groundtruth does not exist: {}".format(groundtruth_path))
-            continue
+    datacost_data = np.load(datacost_path)
+    datacost = datacost_data["volume"]
 
-        datacost_data = np.load(datacost_path)
-        datacost = datacost_data["volume"]
+    groundtruth = np.load(groundtruth_path)["probs"]
 
-        groundtruth = np.load(groundtruth_path)["probs"]
+    # Make sure the data is compatible with the parameters.
+    print(datacost_path)
+    print(datacost.shape)
+    assert datacost.shape[3] == nclasses
+    assert datacost.shape == groundtruth.shape
 
-        # Make sure the data is compatible with the parameters.
-        print(datacost_path)
-        print(datacost.shape)
-        assert datacost.shape[3] == nclasses
-        assert datacost.shape == groundtruth.shape
-
-        datacosts.append(datacost)
-        groundtruths.append(groundtruth)
+    datacosts.append(datacost)
+    groundtruths.append(groundtruth)
 
     idxs = np.arange(len(datacosts))
 

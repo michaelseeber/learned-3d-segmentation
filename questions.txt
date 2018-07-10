@@ -1,18 +1,40 @@
-preprocessing extra -> speed
-labels not from colors, instead use conversion from tsv file -> less label
-
-"centering pointcloud!"
-
-
-
-
-
 
 ////////////////////////////////////////
-Next Meeting
+Meeting 10.7
 
 
-T-Net? not in sem_seg
+Pointnet:
+T-Net? not in sem_seg? augmenting enough? 
+labels not from colors, instead use conversion from tsv file -> less labels
+most papers ditch unknown label
+centering pointcloud needed with blocks?
+evaluating whole scene -> batch size? -> things left etc how to deal with different scene sizes
+voxelization: radius? map to -1 1?
+problem with floor?
+stats....
+
+Data:
+preprocessing: how many sceens for the start? (batch size)
+
+Reconstruction:
+voxel size?
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
