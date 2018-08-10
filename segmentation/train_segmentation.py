@@ -30,7 +30,7 @@ if os.path.exists("/scratch/thesis/HIL"):
     ptvsd.wait_for_attach()
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--data_path', required = True)
+# parser.add_argument('--data_path', required = True)
 parser.add_argument('--gpu', type=int, default=0, help='GPU to use [default: GPU 0]')
 parser.add_argument('--log_dir', default='model', help='Log dir [default: log]')
 parser.add_argument('--num_point', type=int, default=8192, help='Point number [default: 4096]')
@@ -45,7 +45,7 @@ parser.add_argument('--decay_rate', type=float, default=0.5, help='Decay rate fo
 FLAGS = parser.parse_args()
 
 
-DATA_PATH = FLAGS.data_path
+# DATA_PATH = FLAGS.data_path 
 NUM_POINT = FLAGS.num_point
 BATCH_SIZE = FLAGS.batch_size
 MAX_EPOCH = FLAGS.max_epoch

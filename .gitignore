@@ -12,3 +12,5 @@ segmentation/model
 segmentation/results/
 data/preprocessing/data.pickle
 
+
+data/scenes/download

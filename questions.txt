@@ -1,6 +1,6 @@
 
 TODO:
-Segmentation batch size = scene size
+Segmentation batch size = scene size --> not so easz vars on CPU etc...
 Voxelization correct voxel size => check with scannet paper but ca 3cm?
 feed propabilities per class directly into reconstruction
 floor -> give larger weight

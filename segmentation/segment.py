@@ -59,7 +59,7 @@ def segment(model_path):
 
 
         
-        eval_whole_scene_one_epoch(sess, ops)
+        # eval_whole_scene_one_epoch(sess, ops)
         eval_scene(0, sess, ops)
 
        
@@ -198,13 +198,15 @@ def eval_scene(scene_id, sess, ops):
 
     if batch_data.shape[0]<BATCH_SIZE:
         batch_data = np.concatenate((batch_data, np.zeros((BATCH_SIZE-scene_end,NUM_POINT,6))))
-        # batch_data.shape[0] > BATCH_SIZE: not yet implemented 
+    else:
+        print("error")
 
     feed_dict = {ops['pointclouds_pl']: batch_data,
                  ops['is_training_pl']: is_training}
     step,  pred_val = sess.run([ops['step'], ops['pred']],
                                 feed_dict=feed_dict)
     pred_val = np.argmax(pred_val, 2) # BxN
+
 
     #Output Prediction Pointcloud and truth not correct yet
     fout = open(os.path.join(BASE_DIR, 'results', 'predicted_scene_%d.obj' % scene_id), 'w+')
@@ -218,10 +220,10 @@ def eval_scene(scene_id, sess, ops):
     fout.close()
     fout_voxel.close()
 
-    cloud = PyntCloud.from_file(os.path.join(BASE_DIR, 'results', 'forvoxel_%d.obj' % scene_id))
-    voxelgrid_id = cloud.add_structure("voxelgrid", sizes=[0.1, 0.1, 0.1])
-    voxelgrid = cloud.structures[voxelgrid_id]
-    voxelgrid.plot(d=3, mode="density", cmap="hsv")
+    # cloud = PyntCloud.from_file(os.path.join(BASE_DIR, 'results', 'forvoxel_%d.obj' % scene_id))
+    # voxelgrid_id = cloud.add_structure("voxelgrid", sizes=[0.1, 0.1, 0.1])
+    # voxelgrid = cloud.structures[voxelgrid_id]
+    # voxelgrid.plot(d=3, mode="density", cmap="hsv")
 
             
 
