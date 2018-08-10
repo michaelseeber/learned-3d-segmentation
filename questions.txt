@@ -1,4 +1,15 @@
 
+TODO:
+Segmentation batch size = scene size
+Voxelization correct voxel size => check with scannet paper but ca 3cm?
+feed propabilities per class directly into reconstruction
+floor -> give larger weight
+more scenes
+
+
+
+
+
 ////////////////////////////////////////
 Meeting 10.7
 
