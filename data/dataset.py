@@ -3,6 +3,10 @@ import sys
 import numpy as np
 import pickle
 
+DATA_PATH_FULL = "/scratch/thesis/data/scenes/full/data.pickle"
+DATA_PATH_TEST = "/scratch/thesis/data/scenes/test/data.pickle"
+
+DATA_PATH = DATA_PATH_TEST
 
 class Block():
     def __init__(self, num_classes, npoints=8192, split='train'):
@@ -10,7 +14,7 @@ class Block():
         self.num_classes = num_classes
         self.split = split
 
-        with open("/scratch/thesis/data/preprocessing/data.pickle", "rb") as f:
+        with open(DATA_PATH, "rb") as f:
             self.allpoints, self.alllabels = pickle.load(f)
 
         if split=='train':
@@ -76,7 +80,7 @@ class WholeScene():
         self.num_classes = num_classes
         self.split = split
 
-        with open("/scratch/thesis/data/preprocessing/data.pickle", "rb") as f:
+        with open(DATA_PATH, "rb") as f:
             self.allpoints, self.alllabels = pickle.load(f)
 
         if split=='train':

@@ -1,47 +1,40 @@
 import os
 import sys
 import numpy as np
+import plyfile
+from skimage.measure import marching_cubes_lewiner
 
-def point_cloud_to_volume(points, vsize, radius=1.0, num_sample=128):
-    """ input is Nx3 points
-        output is vsize*vsize*vsize*num_sample*3
-        assumes points are in range [-radius, radius]
-        samples num_sample points in each voxel, if there are less than
-        num_sample points, replicate the points
-    """
-    vol = np.zeros((vsize,vsize,vsize,num_sample,3))
-    voxel = 2*radius/float(vsize)
-    locations = (points + radius)/voxel
-    locations = locations.astype(int)
-    loc2pc = {}
-    for n in range(points.shape[0]):
-        loc = tuple(locations[n,:])
-        if loc not in loc2pc:
-            loc2pc[loc] = []
-        loc2pc[loc].append(points[n,:])
-    #print loc2pc
 
-    for i in range(vsize):
-        for j in range(vsize):
-            for k in range(vsize):
-                if (i,j,k) not in loc2pc:
-                    vol[i,j,k,:,:] = np.zeros((num_sample,3))
-                else:
-                    pc = loc2pc[(i,j,k)] # a list of (3,) arrays
-                    pc = np.vstack(pc) # kx3
-                    # Sample/pad to num_sample points
-                    if pc.shape[0]>num_sample:
-                        choices = np.random.choice(pc.shape[0], num_sample, replace=False)
-                        pc = pc[choices,:]
-                    elif pc.shape[0]<num_sample:
-                        pc = np.lib.pad(pc, ((0,num_sample-pc.shape[0]),(0,0)), 'edge')
-                    # Normalize
-                    pc_center = (np.array([i,j,k])+0.5)*voxel - radius
-                    #print 'pc center: ', pc_center
-                    pc = (pc - pc_center) / voxel # shift and scale
-                    vol[i,j,k,:,:] = pc 
-                #print (i,j,k), vol[i,j,k,:,:]
-    return vol
+def extract_mesh_marching_cubes(path, volume, color=None, level=0.5,
+                                step_size=1.0, gradient_direction="ascent"):
+    if level > volume.max() or level < volume.min():
+        return
+
+    verts, faces, normals, values = marching_cubes_lewiner(
+        volume, level=level, step_size=step_size,
+        gradient_direction=gradient_direction)
+
+    ply_verts = np.empty(len(verts),
+                         dtype=[("x", "f4"), ("y", "f4"), ("z", "f4")])
+    ply_verts["x"] = verts[:, 0]
+    ply_verts["y"] = verts[:, 1]
+    ply_verts["z"] = verts[:, 2]
+    ply_verts = plyfile.PlyElement.describe(ply_verts, "vertex")
+
+    if color is None:
+        ply_faces = np.empty(
+            len(faces), dtype=[("vertex_indices", "i4", (3,))])
+    else:
+        ply_faces = np.empty(
+            len(faces), dtype=[("vertex_indices", "i4", (3,)),
+                               ("red", "u1"), ("green", "u1"), ("blue", "u1")])
+        ply_faces["red"] = color[0]
+        ply_faces["green"] = color[1]
+        ply_faces["blue"] = color[2]
+    ply_faces["vertex_indices"] = faces
+    ply_faces = plyfile.PlyElement.describe(ply_faces, "face")
+
+    plyfile.PlyData([ply_verts, ply_faces]).write(path)
 
 def point_cloud_label_to_surface_voxel_label_fast(point_cloud, label, res=0.0484):
     coordmax = np.max(point_cloud,axis=0)

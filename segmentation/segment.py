@@ -13,12 +13,14 @@ import dataset
 import tf_util
 import pc_util as pc
 from pyntcloud import PyntCloud
+import pandas as pd
 
 
-if os.path.exists("/scratch/thesis/HIL"):
-    import ptvsd
-    ptvsd.enable_attach("thesis", address = ('192.33.89.41', 3000))
-    ptvsd.wait_for_attach()
+
+# if os.path.exists("/scratch/thesis/HIL"):
+#     import ptvsd
+#     ptvsd.enable_attach("thesis", address = ('192.33.89.41', 3000))
+#     ptvsd.wait_for_attach()
 
 NUM_CLASSES = 21
 NUM_POINT = 8192
@@ -205,31 +207,55 @@ def eval_scene(scene_id, sess, ops):
                  ops['is_training_pl']: is_training}
     step,  pred_val = sess.run([ops['step'], ops['pred']],
                                 feed_dict=feed_dict)
-    pred_val = np.argmax(pred_val, 2) # BxN
+    pred_class = np.argmax(pred_val, 2) # BxN
 
 
-    #Output Prediction Pointcloud and truth not correct yet
+    #Output Prediction Pointcloud
     fout = open(os.path.join(BASE_DIR, 'results', 'predicted_scene_%d.obj' % scene_id), 'w+')
-    fout_voxel = open(os.path.join(BASE_DIR, 'results', 'forvoxel_%d.obj' % scene_id), 'w+')
     for b in range(scene_end):
         for i in range(batch_data.shape[1]):
-            color = label_util.label2color(pred_val[b][i], converted=True)
+            color = label_util.label2color(pred_class[b][i], converted=True)
             fout.write('v %f %f %f %d %d %d\n' % (batch_data[b,i,0], batch_data[b,i,1], batch_data[b,i,2], color[0], color[1], color[2]))
-            fout_voxel.write('v %f %f %f\n' % (batch_data[b,i,0], batch_data[b,i,1], batch_data[b,i,2]))
-
     fout.close()
-    fout_voxel.close()
-
-    # cloud = PyntCloud.from_file(os.path.join(BASE_DIR, 'results', 'forvoxel_%d.obj' % scene_id))
-    # voxelgrid_id = cloud.add_structure("voxelgrid", sizes=[0.1, 0.1, 0.1])
-    # voxelgrid = cloud.structures[voxelgrid_id]
-    # voxelgrid.plot(d=3, mode="density", cmap="hsv")
-
-            
 
 
+    #voxelization
+
+    pandasdata = pd.DataFrame(batch_data[0:scene_end, :, 0:3].reshape(-1, 3), columns=['x','y','z']) 
+    cloud = PyntCloud(pandasdata)
+    # use resolutionof 5 cm, bounding box not regular
+    voxelgrid_id = cloud.add_structure("voxelgrid", sizes=[0.05, 0.05, 0.05], bb_cuboid=False)
+    voxelgrid = cloud.structures[voxelgrid_id]
+    color = None 
+    pc.extract_mesh_marching_cubes(os.path.join(BASE_DIR, 'results', 'voxelgrid_%d.ply' % scene_id), voxelgrid.get_feature_vector(mode="binary"), color=color)
+
+
+    # fill voxelgrid with probabilities of points in it ->numerical issues.....
+    vgrid_dim = voxelgrid.x_y_z
+    flat_pred_class = pred_class[0:scene_end,:].reshape(-1)
+    vox_prob = np.zeros(shape=(vgrid_dim[0], vgrid_dim[1], vgrid_dim[2], NUM_CLASSES))
+    voxels = voxelgrid.voxel_n
+    filled_vox = np.unique(voxelgrid.voxel_n)
+    for curr_vox in filled_vox:
+        idx = np.unravel_index(curr_vox, vgrid_dim)
+        vox_points = np.where(voxels == curr_vox)[0]
+        for p in vox_points:
+            vox_prob[idx[0],idx[1],idx[2], flat_pred_class[p]]  +=  1 / vox_points.size
+        
+
+    print('test')
+    np.savez_compressed(os.path.join('/scratch/thesis/data/segmented/', 'voxelgrid_scene%d.npz' % scene_id), probs=vox_prob)
+    # class_vox = [0 for _ in range(NUM_CLASSES)]
+    # _, uvlabel, _ = pc.point_cloud_label_to_surface_voxel_label_fast(batch_data[0:scene_end,:,0:3].reshape(-1, 3), pred_class[0:scene_end,:].reshape(-1), res=0.05)
+    # for l in range(NUM_CLASSES):
+    #         class_vox[l] += np.sum(uvlabel[:]==l)
+
+    # per_class_str = 'vox based --------'
+    # for l in range(0,NUM_CLASSES):
+    #     per_class_str += 'class %d amount %d \n' % (l, class_vox[l])
+    # print(per_class_str)
 
 
 
 if __name__ == "__main__":
-    segment("/scratch/thesis/segmentation/model/model.ckpt")
+    segment("/scratch/thesis/segmentation/model_test/model.ckpt")

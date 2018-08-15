@@ -24,17 +24,17 @@ import dataset
 
 
 
-if os.path.exists("/scratch/thesis/HIL"):
-    import ptvsd
-    ptvsd.enable_attach("thesis", address = ('192.33.89.41', 3000))
-    ptvsd.wait_for_attach()
+# if os.path.exists("/scratch/thesis/HIL"):
+#     import ptvsd
+#     ptvsd.enable_attach("thesis", address = ('192.33.89.41', 3000))
+#     ptvsd.wait_for_attach()
 
 parser = argparse.ArgumentParser()
 # parser.add_argument('--data_path', required = True)
 parser.add_argument('--gpu', type=int, default=0, help='GPU to use [default: GPU 0]')
 parser.add_argument('--log_dir', default='model', help='Log dir [default: log]')
 parser.add_argument('--num_point', type=int, default=8192, help='Point number [default: 4096]')
-parser.add_argument('--max_epoch', type=int, default=50000, help='Epoch to run [default: 50]')
+parser.add_argument('--max_epoch', type=int, default=500000, help='Epoch to run [default: 50]')
 parser.add_argument('--batch_size', type=int, default=3, help='Batch Size during training [default: 1]')
 parser.add_argument('--learning_rate', type=float, default=0.001, help='Initial learning rate [default: 0.001]')
 parser.add_argument('--momentum', type=float, default=0.9, help='Initial learning rate [default: 0.9]')
@@ -194,14 +194,14 @@ def train():
 
 
         for epoch in range(MAX_EPOCH):
-            if epoch % 50 == 0:
-                log_string('**** EPOCH %03d ****' % (epoch))
+
+            log_string('**** EPOCH %03d ****' % (epoch))
             sys.stdout.flush()
              
             train_one_epoch(sess, ops, train_writer)
             
             # Save the variables to disk.
-            if epoch % 100 == 0:
+            if epoch % 10 == 0:
                 eval_one_epoch(sess, ops, test_writer)
                 # eval_whole_scene_one_epoch(sess, ops, test_writer)
                 save_path = saver.save(sess, os.path.join(LOG_DIR, "model.ckpt"))
@@ -225,7 +225,7 @@ def train_one_epoch(sess, ops, train_writer):
     loss_sum = 0
     
     for batch_idx in range(num_batches):
-        if batch_idx % 50 == 0:
+        if batch_idx % 100 == 0:
             print('Current batch/total batch num: %d/%d'%(batch_idx,num_batches))
         start_idx = batch_idx * BATCH_SIZE
         end_idx = (batch_idx+1) * BATCH_SIZE
@@ -320,7 +320,7 @@ def eval_one_epoch(sess, ops, test_writer):
     per_class_str = 'vox based --------'
     for l in range(1,NUM_CLASSES):
         per_class_str += 'class %d weight: %f, acc: %f; \n' % (l,labelweights_vox[l-1],total_correct_class[l]/float(total_seen_class[l]))
-    # log_string(per_class_str)
+    log_string(per_class_str)
 
     # unique_predictions, unique_counts = np.unique(np.concat(prediction), return_counts=True)
     # for i in range(unique_predictions.size):

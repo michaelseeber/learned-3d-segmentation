@@ -31,6 +31,19 @@
      
         },
         {
+            "name": "convert_scannet",
+            "type": "python",
+            "request": "launch",
+            "program": "/scratch/thesis/data/preprocessing/reconstruction/TSDF/convert_scannet.py",
+            "args": [
+                "--scene_path", "/scratch/thesis/data/scenes/test_reconstruct/scene0000_00",
+                "--output_path", "/scratch/thesis/data/scenes/test_reconstruct/scene0000_00/converted",
+                "--resolution", "0.05"
+            ]
+     
+        },
+
+        {
             "name": "Segmentation Windows",
             "type": "python",
             "request": "launch",

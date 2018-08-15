@@ -1,0 +1,5 @@
+cd to SensReader/c++ and run make to compile sens (reader for scannet data)
+ 
+cd to TSDF and run "python setup.py" to compile "tsdf_volume.pyx" which uses cython.
+ 
+In run_scannet_experiments.sh change SCANNET_PATH to your own absolute path.

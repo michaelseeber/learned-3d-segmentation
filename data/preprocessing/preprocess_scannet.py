@@ -19,7 +19,7 @@ RAW2SCANNET = scannet_util.g_raw2scannet
 #     ptvsd.wait_for_attach()
 
 
-SCANNET_DIR = '/scratch/thesis/data/scenes'
+SCANNET_DIR = '/scratch/thesis/data/scenes/full'
 SCENE_NAMES = [line.rstrip() for line in open(os.path.join(SCANNET_DIR, 'list.txt'))]
 
 def main():
@@ -38,7 +38,7 @@ def main():
         allpoints.append(points)
         alllabels.append(labels)
     #save to disk
-    with open('data.pickle', 'wb') as f:
+    with open(os.path.join(SCANNET_DIR, 'data.pickle'), 'wb') as f:
         print("Saving to disk...")
         pickle.dump([allpoints, np.squeeze(alllabels)], f)
         print("Done!")
