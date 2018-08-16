@@ -36,14 +36,7 @@ do
         --datacost_path $scene_path/converted/groundtruth_datacost.npz \
         --output_path $scene_path/converted/groundtruth_model \
         --label_map_path $scene_path/converted/labels.txt \
-        --niter_steps 50 --lam 0.1 --nclasses 21 
-
-    # Fuse every 50 frame to generate incomplete input data
-    python $SCANNET_PATH/TSDF/tsdf_fusion.py \
-        --input_path $scene_path/converted/ \
-        --output_path $scene_path/converted/datacost \
-        --frame_rate 50 \
-        --resolution 0.05
+        --niter_steps 50 --lam 0.1 --nclasses 22
 
 done
 

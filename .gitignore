@@ -1,16 +1,8 @@
-
 reconstruction/model
 data/scenes
 segmentation/log
 segmentation/__pycache__
 HIL
-segmentation/__pycache__/
-segmentation/log/
-segmentation/log/
-
 segmentation/model
 segmentation/results/
-data/preprocessing/data.pickle
-
-
-data/scenes/download
+data/scenes/
