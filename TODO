@@ -1,2 +1,4 @@
 DONE - Normalze/center pntcloud
 OPEN - LABLES??? -> EMAIL
+
+Scene_name <-> scene_id segment output and input to reconstruct solve currently expects order :) Idea: include name into pickle

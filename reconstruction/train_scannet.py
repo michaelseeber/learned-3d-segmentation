@@ -7,6 +7,9 @@ import tensorflow as tf
 
 EPSILON = 10e-8
 
+SEG_POINTCLOUDS_PATH = '/scratch/thesis/data/segmented'
+GROUNDTRUTH_PATH = '/scratch/thesis/data/scenes/reconstruct_gt'
+
 
 def mkdir_if_not_exists(path):
     assert os.path.exists(os.path.dirname(path.rstrip("/")))
@@ -400,7 +403,7 @@ def build_model(params):
     return probs, d, u, u_, m, l
 
 
-def build_data_generator(scene_path, scene_list_path, params):
+def pointnet_data_generator(scene_list_path, params):
     epoch_npasses = params["epoch_npasses"]
     batch_size = params["batch_size"]
     nrows = params["nrows"]
@@ -421,16 +424,15 @@ def build_data_generator(scene_path, scene_list_path, params):
     for i, scene_name in enumerate(scene_list):
         print("Loading {} [{}/{}]".format(scene_name, i + 1, len(scene_list)))
 
-        # if len(datacosts) == 5:
-        #     break
-
-        datacost_path = os.path.join(scene_path, scene_name,"converted",
-                                     "datacost.npz")
-        groundtruth_path = os.path.join(scene_path, scene_name, "converted",
-                                        "groundtruth_model/probs.npz")
-
-        if not os.path.exists(datacost_path):
-            print("  Warning: datacost does not exist: {}".format(datacost_path))
+        # if len(datacosts) == 5:bbox
+        #     breakbbox
+bbox
+        datacost_path = os.path.jobboxin(SEG_POINTCLOUDS_PATH,"voxelgrid_" + scene_name +".npz")
+        groundtruth_path = os.pathbbox.join(GROUNDTRUTH_PATH, scene_name, "converted",
+                                  bbox      "groundtruth_model/probs.npz")
+bbox
+        if not os.path.exists(databboxcost_path):
+            print("  Warning: databboxcost does not exist: {}".format(datacost_path))
             continue
 
         if not os.path.exists(groundtruth_path):
@@ -535,132 +537,7 @@ def build_data_generator(scene_path, scene_list_path, params):
             npasses = 0
             yield
 
-def build_data_generator_pointNet(scene_path, scene_list, params):
-    epoch_npasses = params["epoch_npasses"]
-    batch_size = params["batch_size"]
-    nrows = params["nrows"]
-    ncols = params["ncols"]
-    nslices = params["nslices"]
-    nclasses = params["nclasses"]
-
-
-    # Load the data for all scenes.
-    datacosts = []
-    groundtruths = []
-   
-
-    datacost_path = os.path.join(scene_path, scene_name,"converted",
-                                    "datacost.npz")
-    groundtruth_path = os.path.join(scene_path, scene_name, "converted",
-                                    "groundtruth_model/probs.npz")
-
-    if not os.path.exists(datacost_path):
-        print("  Warning: datacost does not exist: {}".format(datacost_path))
-        continue
-
-    if not os.path.exists(groundtruth_path):
-        print("  Warning: groundtruth does not exist: {}".format(groundtruth_path))
-        continue
-
-    datacost_data = np.load(datacost_path)
-    datacost = datacost_data["volume"]
-
-    groundtruth = np.load(groundtruth_path)["probs"]
-
-    # Make sure the data is compatible with the parameters.
-    print(datacost_path)
-    print(datacost.shape)
-    assert datacost.shape[3] == nclasses
-    assert datacost.shape == groundtruth.shape
-
-    datacosts.append(datacost)
-    groundtruths.append(groundtruth)
-
-    idxs = np.arange(len(datacosts))
-
-    batch_datacost = np.empty(
-        (batch_size, nrows, ncols, nslices, nclasses), dtype=np.float32)
-    batch_groundtruth = np.empty(
-        (batch_size, nrows, ncols, nslices, nclasses), dtype=np.float32)
-
-    npasses = 0
-
-    while True:
-        # Shuffle all data samples.
-        np.random.shuffle(idxs)
-
-        # One epoch iterates once over all scenes.
-        for batch_start_idx in range(0, len(idxs), batch_size):
-            # Determine the random scenes for current batch.
-            batch_end_idx = min(batch_start_idx + batch_size, len(idxs))
-            batch_idxs = idxs[batch_start_idx:batch_end_idx]
-
-            # By default, set all voxels to unobserved.
-            batch_datacost[:] = 0
-            batch_groundtruth[:] = 1.0 / nclasses
-
-            # Prepare data for random scenes in current batch.
-            for i, idx in enumerate(batch_idxs):
-                datacost = datacosts[idx]
-                groundtruth = groundtruths[idx]
-
-                # Determine a random crop of the input data.
-                row_start = np.random.randint(
-                    0, max(datacost.shape[0] - nrows, 0) + 1)
-                col_start = np.random.randint(
-                    0, max(datacost.shape[1] - ncols, 0) + 1)
-                slice_start = np.random.randint(
-                    0, max(datacost.shape[2] - nslices, 0) + 1)
-                row_end = min(row_start + nrows, datacost.shape[0])
-                col_end = min(col_start + ncols, datacost.shape[1])
-                slice_end = min(slice_start + nslices, datacost.shape[2])
-
-                # Copy the random crop of the data cost.
-                batch_datacost[i,
-                               :row_end-row_start,
-                               :col_end-col_start,
-                               :slice_end-slice_start] = \
-                    datacost[row_start:row_end,
-                             col_start:col_end,
-                             slice_start:slice_end]
-
-                # Copy the random crop of the groundtruth.
-                batch_groundtruth[i,
-                                  :row_end-row_start,
-                                  :col_end-col_start,
-                                  :slice_end-slice_start] = \
-                    groundtruth[row_start:row_end,
-                                col_start:col_end,
-                                slice_start:slice_end]
-
-                # Randomly rotate around z-axis.
-                num_rot90 = np.random.randint(4)
-                if num_rot90 > 0:
-                    batch_datacost[i] = np.rot90(batch_datacost[i],
-                                                 k=num_rot90,
-                                                 axes=(0, 1))
-                    batch_groundtruth[i] = np.rot90(batch_groundtruth[i],
-                                                    k=num_rot90,
-                                                    axes=(0, 1))
-
-                # Randomly flip along x and y axis.
-                flip_axis = np.random.randint(3)
-                if flip_axis == 0 or flip_axis == 1:
-                    batch_datacost[i] = np.flip(batch_datacost[i],
-                                                axis=flip_axis)
-                    batch_groundtruth[i] = np.flip(batch_groundtruth[i],
-                                                   axis=flip_axis)
-
-            yield (batch_datacost[:len(batch_idxs)],
-                   batch_groundtruth[:len(batch_idxs)])
-
-        npasses += 1
-
-        if epoch_npasses > 0 and npasses >= epoch_npasses:
-            npasses = 0
-            yield
-
-def train_model(scene_path, scene_train_list_path, scene_val_list_path,
+def train_model(scene_train_list_path, scene_val_list_path,
                 model_path, params):
     log_path = os.path.join(model_path, "logs")
     checkpoint_path = os.path.join(model_path, "checkpoint")
@@ -678,12 +555,13 @@ def train_model(scene_path, scene_train_list_path, scene_val_list_path,
     val_nbatches = params["val_nbatches"]
 
     train_data_generator = \
-        build_data_generator(scene_path, scene_train_list_path, params)
+        pointnet_data_generator(scene_train_list_path, params)
+    train_data = next(train_data_generator)
 
     val_params = dict(params)
     val_params["epoch_npasses"] = -1
     val_data_generator = \
-        build_data_generator(scene_path, scene_val_list_path, val_params)
+        pointnet_data_generator(scene_val_list_path, val_params)
 
     probs, datacost, u, u_, m, l = build_model(params)
     groundtruth = tf.placeholder(tf.float32, probs[0].shape, name="groundtruth")
@@ -950,7 +828,7 @@ def train_model(scene_path, scene_train_list_path, scene_val_list_path,
 def parse_args():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--scene_path", required=True)
+    # parser.add_argument("--scene_path", required=True)
     parser.add_argument("--scene_train_list_path", required=True)
     parser.add_argument("--scene_val_list_path", required=True)
     parser.add_argument("--model_path", required=True)
@@ -967,7 +845,7 @@ def parse_args():
     parser.add_argument("--tau", type=float, default=0.2)
     parser.add_argument("--lam", type=float, default=1.0)
 
-    parser.add_argument("--batch_size", type=int, default=3)
+    parser.add_argument("--batch_size", type=int, default=1) #3
     parser.add_argument("--nepochs", type=int, default=1000)
     parser.add_argument("--epoch_npasses", type=int, default=1)
     parser.add_argument("--val_nbatches", type=int, default=15)
@@ -1003,7 +881,7 @@ def main():
         "softmax_scale": args.softmax_scale,
     }
 
-    train_model(args.scene_path, args.scene_train_list_path,
+    train_model(args.scene_train_list_path,
                 args.scene_val_list_path, args.model_path, params)
 
 

@@ -1,6 +1,6 @@
 SCANNET_PATH=/scratch/thesis/data
 
-for scene_path in $(ls -d $SCANNET_PATH/scenes/test_reconstruct/scene*)
+for scene_path in $(ls -d $SCANNET_PATH/scenes/reconstruct_gt/scene*)
 do
     scene_name=$(basename $scene_path)
     echo $scene_name

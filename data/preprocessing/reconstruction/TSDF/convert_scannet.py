@@ -34,27 +34,48 @@ from pyntcloud.geometry.areas import triangle_area_multi
 #                  'otherfurniture']
 
 NYU40_LABEL_COLORS = (
-    ("unannotated", (0, 0, 0)), # #000000
-    ("wall", (176, 135, 93)), # #B0875D
-    ("floor", (175, 183, 255)), # #AFB7FF
-    ("chair", (139, 255, 65)), # #8BFF41
-    ("table", (101, 51, 111)), # #65336F
-    ("desk", (33, 255, 253)), # #21FFFD
-    ("bed", (138, 0, 123)), # #8A007B
-    ("bookshelf", (15, 125, 138)), # #0F7D8A
-    ("sofa", (98, 60, 1)), # #623C01
-    ("sink", (129, 0, 44)), # #81002C
-    ("bathtub", (172, 118, 5)), # #AC7605
-    ("toilet", (115, 157, 4)), # #739D04
-    ("curtain", (253, 142, 255)), # #FD8EFF
-    ("counter", (254, 226, 10)), # #FEE20A
-    ("door", (20, 161, 106)), # #14A16A
-    ("window", (13, 104, 166)), # #0D68A6
-    ("shower curtain", (11, 84, 2)), # #0B5402
-    ("refridgerator", (224, 64, 176)), # #E040B0
-    ("picture", (88, 84, 110)), # #58546E
-    ("cabinet", (205, 255, 10)), # #CDFF0A
-    ("otherfurniture", (0, 0, 255)), # #0000FF
+    # ("unannotated", (0, 0, 0)), # #000000
+    # ("wall", (176, 135, 93)), # #B0875D
+    # ("floor", (175, 183, 255)), # #AFB7FF
+    # ("chair", (139, 255, 65)), # #8BFF41
+    # ("table", (101, 51, 111)), # #65336F
+    # ("desk", (33, 255, 253)), # #21FFFD
+    # ("bed", (138, 0, 123)), # #8A007B
+    # ("bookshelf", (15, 125, 138)), # #0F7D8A
+    # ("sofa", (98, 60, 1)), # #623C01
+    # ("sink", (129, 0, 44)), # #81002C
+    # ("bathtub", (172, 118, 5)), # #AC7605
+    # ("toilet", (115, 157, 4)), # #739D04
+    # ("curtain", (253, 142, 255)), # #FD8EFF
+    # ("counter", (254, 226, 10)), # #FEE20A
+    # ("door", (20, 161, 106)), # #14A16A
+    # ("window", (13, 104, 166)), # #0D68A6
+    # ("shower curtain", (11, 84, 2)), # #0B5402
+    # ("refridgerator", (224, 64, 176)), # #E040B0
+    # ("picture", (88, 84, 110)), # #58546E
+    # ("cabinet", (205, 255, 10)), # #CDFF0A
+    # ("otherfurniture", (0, 0, 255)), # #0000FF
+    ("unannotated", (0, 0, 0)), 
+    ("wall", (190,153,112)),
+    ("floor", (189,198,255)),
+    ("chair", (152,255,82)),
+    ("table", (122,71,130)), 
+    ("desk", (1,255,254)), 
+    ("bed", (158,0,142)),
+    ("bookshelf", (0,143,156)), 
+    ("sofa", (119,77,0)), 
+    ("sink", (149,0,58)), 
+    ("bathtub", (187,136,0)),  
+    ("toilet", (133,169,0)), 
+    ("curtain", (255,166,254)), 
+    ("counter", (255,229,2)), 
+    ("door", (0,174,126)),
+    ("window", (0,125,181)), 
+    ("shower curtain", (0,100,1)), 
+    ("refridgerator", (232,94,190)), 
+    ("picture", (107,104,130)),
+    ("cabinet", (213,255,0)), 
+    ("otherfurniture", (0,0,255))
 )
 
 NYU40_LABELS = tuple(label for label, _ in NYU40_LABEL_COLORS)
@@ -159,15 +180,15 @@ def main():
     maxz = groundtruth.points.z.max()
 
     # Extend the bounding box by a stretching factor.
-    diffx = maxx - minx
-    diffy = maxy - miny
-    diffz = maxz - minz
-    minx -= 0.05 * diffx
-    maxx += 0.05 * diffx
-    miny -= 0.05 * diffy
-    maxy += 0.05 * diffy
-    minz -= 0.05 * diffz
-    maxz += 0.05 * diffz
+    # diffx = maxx - minx
+    # diffy = maxy - miny
+    # diffz = maxz - minz
+    # minx -= 0.05 * diffx
+    # maxx += 0.05 * diffx
+    # miny -= 0.05 * diffy
+    # maxy += 0.05 * diffy
+    # minz -= 0.05 * diffz
+    # maxz += 0.05 * diffz
 
     # Write the bounding box.
     bbox = np.array(((minx, maxx), (miny, maxy), (minz, maxz)),

@@ -45,6 +45,13 @@ def segment(model_path):
     config.allow_soft_placement = True
     config.log_device_placement = True
 
+    # segment pointclouds that have groundtruth for reconstruction
+    scene_list = []
+    with open(os.path.join('/scratch/thesis/data/scenes/reconstruct_gt', 'list.txt'), "r") as fid:
+        for line in fid:
+            line = line.strip()
+            if line:
+                scene_list.append(line)
     
     with tf.Session(config=config) as sess:
         # Restore variables from model_path
@@ -62,7 +69,8 @@ def segment(model_path):
 
         
         # eval_whole_scene_one_epoch(sess, ops)
-        eval_scene(0, sess, ops)
+        for idx, scene_name in enumerate(scene_list):
+            eval_scene(idx, scene_name, sess, ops)
 
        
     # ops = {'pointclouds_pl': pointclouds_pl,
@@ -72,7 +80,7 @@ def segment(model_path):
     # labeled_cloud = PytnCloud(pd.DataFrame({'x': pts[:, 6], 'y': pts[:, 7], 'z': pts[:, 8], 'label': pred_label[b, :]}))
 
 
-def eval_scene(scene_id, sess, ops):
+def eval_scene(scene_id, scene_name, sess, ops):
     is_training = False
     
     print('----')
@@ -94,14 +102,14 @@ def eval_scene(scene_id, sess, ops):
 
 
     #Output Prediction Pointcloud & GT
-    fout = open(os.path.join(BASE_DIR, 'results', 'predicted_scene_%d.obj' % scene_id), 'w+')
+    fout = open(os.path.join(BASE_DIR, 'results', 'predicted_%s.obj' % scene_name), 'w+')
     for b in range(scene_end):
         for i in range(batch_data.shape[1]):
             color = label_util.label2color(pred_class[b][i], converted=True)
             fout.write('v %f %f %f %d %d %d\n' % (batch_data[b,i,0], batch_data[b,i,1], batch_data[b,i,2], color[0], color[1], color[2]))
     fout.close()
 
-    fout = open(os.path.join(BASE_DIR, 'results', 'groundtruth_scene_%d.obj' % scene_id), 'w+')
+    fout = open(os.path.join(BASE_DIR, 'results', 'groundtruth_%s.obj' % scene_name), 'w+')
     for b in range(scene_end):
         for i in range(batch_data.shape[1]):
             color = label_util.label2color(gt_label[b][i], converted=True)
@@ -110,30 +118,41 @@ def eval_scene(scene_id, sess, ops):
 
     #voxelization
 
-    pandasdata = pd.DataFrame(batch_data[0:scene_end, :, 0:3].reshape(-1, 3), columns=['x','y','z']) 
+    pandasdata = pd.DataFrame(batch_data[0:scene_end, :, 0:3].reshape(-1, 3), columns=['x','y','z'])
+
+    #todo bounding box
+    bbox = np.loadtxt("/scratch/thesis/data/scenes/reconstruct_gt/scene0000_00/converted/bbox.txt")
+    minxyz = bbox[:,0]
+    maxxyz = bbox[:,1]
+    pandasmin = pd.DataFrame(minxyz)
+    pandasmax = pd.DataFrame(maxxyz)
+    pandasdata.append(pandasmin)
+    pandasdata.append(pandasmax)
     cloud = PyntCloud(pandasdata)
     # use resolutionof 5 cm, bounding box not regular
     voxelgrid_id = cloud.add_structure("voxelgrid", sizes=[0.05, 0.05, 0.05], bb_cuboid=False)
     voxelgrid = cloud.structures[voxelgrid_id]
     color = None 
-    pc.extract_mesh_marching_cubes(os.path.join(BASE_DIR, 'results', 'voxelgrid_%d.ply' % scene_id), voxelgrid.get_feature_vector(mode="binary"), color=color)
+    pc.extract_mesh_marching_cubes(os.path.join(BASE_DIR, 'results', 'voxelgrid_%s.ply' % scene_name), voxelgrid.get_feature_vector(mode="binary"), color=color)
 
 
     # fill voxelgrid with probabilities of points in it ->numerical issues.....
     vgrid_dim = voxelgrid.x_y_z
     flat_pred_class = pred_class[0:scene_end,:].reshape(-1)
-    vox_prob = np.zeros(shape=(vgrid_dim[0], vgrid_dim[1], vgrid_dim[2], NUM_CLASSES))
+    vox_prob = np.zeros(shape=(vgrid_dim[0], vgrid_dim[1], vgrid_dim[2], NUM_CLASSES+1))
+    vox_prob[:,:,:, NUM_CLASSES] = 1 #freespace
     voxels = voxelgrid.voxel_n
-    filled_vox = np.unique(voxelgrid.voxel_n)
+    filled_vox = np.unique(voxels)
     for curr_vox in filled_vox:
         idx = np.unravel_index(curr_vox, vgrid_dim)
+        vox_prob[idx[0],idx[1],idx[2], NUM_CLASSES] = 0 #freespace 
         vox_points = np.where(voxels == curr_vox)[0]
         for p in vox_points:
             vox_prob[idx[0],idx[1],idx[2], flat_pred_class[p]]  +=  1 / vox_points.size
         
 
     print('test')
-    np.savez_compressed(os.path.join('/scratch/thesis/data/segmented/', 'voxelgrid_scene%d.npz' % scene_id), probs=vox_prob)
+    np.savez_compressed(os.path.join('/scratch/thesis/data/segmented/', 'voxelgrid_%s.npz' % scene_name), volume=vox_prob)
     # class_vox = [0 for _ in range(NUM_CLASSES)]
     # _, uvlabel, _ = pc.point_cloud_label_to_surface_voxel_label_fast(batch_data[0:scene_end,:,0:3].reshape(-1, 3), pred_class[0:scene_end,:].reshape(-1), res=0.05)
     # for l in range(NUM_CLASSES):
@@ -147,4 +166,4 @@ def eval_scene(scene_id, sess, ops):
 
 
 if __name__ == "__main__":
-    segment("/scratch/thesis/segmentation/model_test/model.ckpt")
+    segment("/scratch/thesis/segmentation/model_apartments_trained/model.ckpt")

@@ -19,8 +19,9 @@ RAW2SCANNET = scannet_util.g_raw2scannet
 #     ptvsd.wait_for_attach()
 
 
-SCANNET_DIR = '/scratch/thesis/data/scenes/full'
-SCENE_NAMES = [line.rstrip() for line in open(os.path.join(SCANNET_DIR, 'list.txt'))]
+SCANNET_DIR = '/scratch/thesis/data/scenes'
+LIST_NAME = 'apartments' 
+SCENE_NAMES = [line.rstrip() for line in open(os.path.join(SCANNET_DIR, LIST_NAME + '.txt'))]
 
 def main():
     
@@ -38,7 +39,7 @@ def main():
         allpoints.append(points)
         alllabels.append(labels)
     #save to disk
-    with open(os.path.join(SCANNET_DIR, 'data.pickle'), 'wb') as f:
+    with open(os.path.join(SCANNET_DIR, LIST_NAME + '.pickle'), 'wb') as f:
         print("Saving to disk...")
         pickle.dump([allpoints, np.squeeze(alllabels)], f)
         print("Done!")
@@ -49,7 +50,7 @@ def main():
 
 def collect_data_one_scene(scene_name):
     # Over-segmented segments: maps from segment to vertex/point IDs
-    data_folder = os.path.join(SCANNET_DIR, scene_name)
+    data_folder = os.path.join(SCANNET_DIR, 'full', scene_name)
     mesh_seg_filename = os.path.join(data_folder, '%s_vh_clean_2.0.010000.segs.json'%(scene_name))
     with open(mesh_seg_filename) as jsondata:
         d = json.load(jsondata)

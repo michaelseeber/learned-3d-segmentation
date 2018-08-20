@@ -31,18 +31,57 @@
      
         },
         {
+            "name": "Train_Recostnruct with arg",
+            "type": "python",
+            "request": "launch",
+            "program": "/scratch/thesis/reconstruction/train_scannet.py",
+            "args": [
+                "--scene_train_list_path", "/scratch/thesis/data/scenes/reconstruct_gt/list.txt",
+                "--scene_val_list_path", "/scratch/thesis/data/scenes/reconstruct_gt/list.txt",
+                "--model_path", "/scratch/code/LearningPriors/model",
+                "--nclasses", "22"
+    
+            ]
+        },
+        {
             "name": "convert_scannet",
             "type": "python",
             "request": "launch",
             "program": "/scratch/thesis/data/preprocessing/reconstruction/TSDF/convert_scannet.py",
             "args": [
-                "--scene_path", "/scratch/thesis/data/scenes/test_reconstruct/scene0000_00",
-                "--output_path", "/scratch/thesis/data/scenes/test_reconstruct/scene0000_00/converted",
+                "--scene_path", "/scratch/thesis/data/scenes/reconstruct_gt/scene0000_00",
+                "--output_path", "/scratch/thesis/data/scenes/reconstruct_gt/scene0000_00/converted",
                 "--resolution", "0.05"
             ]
      
         },
-
+        {
+            "name": "tsdf_fusion",
+            "type": "python",
+            "request": "launch",
+            "program": "/scratch/thesis/data/preprocessing/reconstruction/TSDF/tsdf_fusion.py",
+            "args": [
+                "--input_path", "/scratch/thesis/data/scenes/reconstruct_gt/scene0000_00/converted",
+                "--output_path", "/scratch/thesis/data/scenes/reconstruct_gt/scene0000_00/converted/groundtruth_datacost",
+                "--resolution", "0.05"
+            ]
+     
+        },
+        {
+            "name": "tv-l1",
+            "type": "python",
+            "request": "launch",
+            "program": "/scratch/thesis/data/preprocessing/reconstruction/eval_tv_l1.py",
+            "args": [
+                "--datacost_path", "/scratch/thesis/data/scenes/reconstruct_gt/scene0000_00/converted/groundtruth_datacost.npz",
+                "--output_path", "/scratch/thesis/data/scenes/reconstruct_gt/scene0000_00/converted/groundtruth_model",
+                "--label_map_path", "/scratch/thesis/data/scenes/reconstruct_gt/scene0000_00/converted/labels.txt",
+                "--niter_steps", "50",
+                "--lam",  "0.1",
+                "--nclasses", "22"
+            ]
+     
+        },
         {
             "name": "Segmentation Windows",
             "type": "python",
