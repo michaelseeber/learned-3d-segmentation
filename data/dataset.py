@@ -48,9 +48,10 @@ class Block():
             if len(curr_semantic_seg)==0:
                 continue
             mask = np.sum((curr_point_set[:,0:3] >= (currmin-0.01))*(curr_point_set[:,0:3] <= (currmax+0.01)),axis=1)==3
-            vidx = np.ceil((curr_point_set[mask,0:3]-currmin)/(currmax-currmin)*[31.0,31.0,62.0])
-            vidx = np.unique(vidx[:,0]*31.0*62.0+vidx[:,1]*62.0+vidx[:,2])
-            isvalid = np.sum(curr_semantic_seg>0)/len(curr_semantic_seg)>=0.7 and len(vidx)/31.0/31.0/62.0>=0.02
+            # vidx = np.ceil((curr_point_set[mask,0:3]-currmin)/(currmax-currmin)*[31.0,31.0,62.0])
+            # vidx = np.unique(vidx[:,0]*31.0*62.0+vidx[:,1]*62.0+vidx[:,2])
+            # isvalid = np.sum(curr_semantic_seg>0)/len(curr_semantic_seg)>=0.7 and len(vidx)/31.0/31.0/62.0>=0.02
+            isvalid = True
             if isvalid:
                 break
         choice = np.random.choice(len(curr_semantic_seg), self.npoints, replace=True)

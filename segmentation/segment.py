@@ -17,14 +17,14 @@ import pandas as pd
 
 
 
-# if os.path.exists("/scratch/thesis/HIL"):
-#     import ptvsd
-#     ptvsd.enable_attach("thesis", address = ('192.33.89.41', 3000))
-#     ptvsd.wait_for_attach()
+if os.path.exists("/scratch/thesis/HIL"):
+    import ptvsd
+    ptvsd.enable_attach("thesis", address = ('192.33.89.41', 3000))
+    ptvsd.wait_for_attach()
 
 NUM_CLASSES = 21
 NUM_POINT = 8192
-BATCH_SIZE = 32
+BATCH_SIZE = 40
 
 TEST_WHOLE_SCENE = dataset.WholeScene(num_classes = NUM_CLASSES)
 
@@ -121,17 +121,22 @@ def eval_scene(scene_id, scene_name, sess, ops):
     pandasdata = pd.DataFrame(batch_data[0:scene_end, :, 0:3].reshape(-1, 3), columns=['x','y','z'])
 
     #todo bounding box
-    bbox = np.loadtxt("/scratch/thesis/data/scenes/reconstruct_gt/scene0000_00/converted/bbox.txt")
-    minxyz = bbox[:,0]
-    maxxyz = bbox[:,1]
-    pandasmin = pd.DataFrame(minxyz)
-    pandasmax = pd.DataFrame(maxxyz)
-    pandasdata.append(pandasmin)
-    pandasdata.append(pandasmax)
+    #p bbox = np.loadtxt("/scratch/thesis/data/scenes/reconstruct_gt/scene0000_00/converted/bbox.txt")
+    # minxyz = bbox[:,0]
+    # maxxyz = bbox[:,1]
+    # pandasmin = pd.DataFrame(minxyz)
+    # pandasmax = pd.DataFrame(maxxyz)
+    # pandasdata.append(pandasmin)
+    # pandasdata.append(pandasmax)
     cloud = PyntCloud(pandasdata)
     # use resolutionof 5 cm, bounding box not regular
     voxelgrid_id = cloud.add_structure("voxelgrid", sizes=[0.05, 0.05, 0.05], bb_cuboid=False)
     voxelgrid = cloud.structures[voxelgrid_id]
+
+    original = PyntCloud.from_file("/scratch/thesis/data/scenes/full/scene0000_00/scene0000_00_vh_clean_2.ply")
+    original_grid_id = original.add_structure("voxelgrid", sizes=[0.05, 0.05, 0.05], bb_cuboid=False)
+    original_grid = original.structures[original_grid_id]
+
     color = None 
     pc.extract_mesh_marching_cubes(os.path.join(BASE_DIR, 'results', 'voxelgrid_%s.ply' % scene_name), voxelgrid.get_feature_vector(mode="binary"), color=color)
 
@@ -166,4 +171,4 @@ def eval_scene(scene_id, scene_name, sess, ops):
 
 
 if __name__ == "__main__":
-    segment("/scratch/thesis/segmentation/model_apartments_trained/model.ckpt")
+    segment("/scratch/thesis/segmentation/model/model.ckpt")
