@@ -1,6 +1,6 @@
 {
     "git.ignoreLimitWarning": true,
     "python.jediEnabled": false,
-    "python.pythonPath": "C:\\Users\\michi\\AppData\\Local\\Programs\\Python\\Python37-32\\python.exe",
+    "python.pythonPath": "/usr/bin/python3",
     "python.linting.pylintEnabled": false
 }

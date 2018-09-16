@@ -424,15 +424,14 @@ def pointnet_data_generator(scene_list_path, params):
     for i, scene_name in enumerate(scene_list):
         print("Loading {} [{}/{}]".format(scene_name, i + 1, len(scene_list)))
 
-        # if len(datacosts) == 5:bbox
-        #     breakbbox
-bbox
-        datacost_path = os.path.jobboxin(SEG_POINTCLOUDS_PATH,"voxelgrid_" + scene_name +".npz")
-        groundtruth_path = os.pathbbox.join(GROUNDTRUTH_PATH, scene_name, "converted",
-                                  bbox      "groundtruth_model/probs.npz")
-bbox
-        if not os.path.exists(databboxcost_path):
-            print("  Warning: databboxcost does not exist: {}".format(datacost_path))
+        # if len(datacosts) == 5:
+        #     break
+        datacost_path = os.path.join(SEG_POINTCLOUDS_PATH,"voxelgrid_" + scene_name +".npz")
+        groundtruth_path = os.path.join(GROUNDTRUTH_PATH, scene_name, "converted",
+                                    "groundtruth_model/probs.npz")
+
+        if not os.path.exists(datacost_path):
+            print("  Warning: datacost does not exist: {}".format(datacost_path))
             continue
 
         if not os.path.exists(groundtruth_path):
@@ -443,6 +442,9 @@ bbox
         datacost = datacost_data["volume"]
 
         groundtruth = np.load(groundtruth_path)["probs"]
+        
+        # ugly hack - remove 1 lazer in z direkction of groundtruth to fix dimensions
+        groundtruth = groundtruth[:,:,0:60, :]
 
         # Make sure the data is compatible with the parameters.
         print(datacost_path)
@@ -846,7 +848,7 @@ def parse_args():
     parser.add_argument("--lam", type=float, default=1.0)
 
     parser.add_argument("--batch_size", type=int, default=1) #3
-    parser.add_argument("--nepochs", type=int, default=1000)
+    parser.add_argument("--nepochs", type=int, default=50)
     parser.add_argument("--epoch_npasses", type=int, default=1)
     parser.add_argument("--val_nbatches", type=int, default=15)
     parser.add_argument("--learning_rate", type=float, default=0.0001)

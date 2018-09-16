@@ -17,10 +17,10 @@ import pandas as pd
 
 
 
-if os.path.exists("/scratch/thesis/HIL"):
-    import ptvsd
-    ptvsd.enable_attach("thesis", address = ('192.33.89.41', 3000))
-    ptvsd.wait_for_attach()
+# if os.path.exists("/scratch/thesis/HIL"):
+#     import ptvsd
+#     ptvsd.enable_attach("thesis", address = ('192.33.89.41', 3000))
+#     ptvsd.wait_for_attach()
 
 NUM_CLASSES = 21
 NUM_POINT = 8192
@@ -53,6 +53,7 @@ def segment(model_path):
             if line:
                 scene_list.append(line)
     
+    evaluated_scenes = []
     with tf.Session(config=config) as sess:
         # Restore variables from model_path
         saver.restore(sess, model_path)
@@ -66,18 +67,25 @@ def segment(model_path):
            'loss': loss,
            'step': batch}
 
-
-        
         # eval_whole_scene_one_epoch(sess, ops)
         for idx, scene_name in enumerate(scene_list):
-            eval_scene(idx, scene_name, sess, ops)
+            evaluated_scenes.append(eval_scene(idx, scene_name, sess, ops))\
 
-       
-    # ops = {'pointclouds_pl': pointclouds_pl,
-    #        'labels_pl': labels_pl,
-    #        'is_training_pl': is_training_pl}
+    # apply convolution to reduct to dimension of datacost
+    tf.reset_default_graph()
+    vox_prob = np.stack(evaluated_scenes, axis=0)
+    conv_pl = tf.placeholder('float')
+    conv_filter = tf.Variable(tf.ones(([1,1,1, vox_prob.shape[-1], NUM_CLASSES+1])))
+    conv_layer = tf.nn.conv3d(conv_pl, filter=conv_filter,  strides=[1,1,1,1,1] ,padding='VALID')
+    # datacost = tf.nn.conv3d(vox_prob, filter=tf.get_variable(shape=[1,1,1, vox_prob.shape[-1], NUM_CLASSES+1], dtype=tf.float64, name='filter'),  strides=[1,1,1,1,1] ,padding='VALID')
+    with tf.Session() as sess:
+        tf.global_variables_initializer().run()
+        feed_dict = {conv_pl: vox_prob}
+        datacost = sess.run(conv_layer, feed_dict)
+    for idx, scene_name in enumerate(scene_list):
+        np.savez_compressed(os.path.join('/scratch/thesis/data/segmented/', 'voxelgrid_%s.npz' % scene_name), volume=datacost[idx])
+        print('Saving %s datacost to disk' % scene_name)
 
-    # labeled_cloud = PytnCloud(pd.DataFrame({'x': pts[:, 6], 'y': pts[:, 7], 'z': pts[:, 8], 'label': pred_label[b, :]}))
 
 
 def eval_scene(scene_id, scene_name, sess, ops):
@@ -120,14 +128,7 @@ def eval_scene(scene_id, scene_name, sess, ops):
 
     pandasdata = pd.DataFrame(batch_data[0:scene_end, :, 0:3].reshape(-1, 3), columns=['x','y','z'])
 
-    #todo bounding box
-    #p bbox = np.loadtxt("/scratch/thesis/data/scenes/reconstruct_gt/scene0000_00/converted/bbox.txt")
-    # minxyz = bbox[:,0]
-    # maxxyz = bbox[:,1]
-    # pandasmin = pd.DataFrame(minxyz)
-    # pandasmax = pd.DataFrame(maxxyz)
-    # pandasdata.append(pandasmin)
-    # pandasdata.append(pandasmax)
+
     cloud = PyntCloud(pandasdata)
     # use resolutionof 5 cm, bounding box not regular
     voxelgrid_id = cloud.add_structure("voxelgrid", sizes=[0.05, 0.05, 0.05], bb_cuboid=False)
@@ -144,7 +145,8 @@ def eval_scene(scene_id, scene_name, sess, ops):
     # fill voxelgrid with probabilities of points in it ->numerical issues.....
     vgrid_dim = voxelgrid.x_y_z
     flat_pred_class = pred_class[0:scene_end,:].reshape(-1)
-    vox_prob = np.zeros(shape=(vgrid_dim[0], vgrid_dim[1], vgrid_dim[2], NUM_CLASSES+1))
+    # +1 for freespace and another one for density (amount of points in each voxel)
+    vox_prob = np.zeros(shape=(vgrid_dim[0], vgrid_dim[1], vgrid_dim[2], NUM_CLASSES+2))
     vox_prob[:,:,:, NUM_CLASSES] = 1 #freespace
     voxels = voxelgrid.voxel_n
     filled_vox = np.unique(voxels)
@@ -152,13 +154,15 @@ def eval_scene(scene_id, scene_name, sess, ops):
         idx = np.unravel_index(curr_vox, vgrid_dim)
         vox_prob[idx[0],idx[1],idx[2], NUM_CLASSES] = 0 #freespace 
         vox_points = np.where(voxels == curr_vox)[0]
+        # add density to datacost
+        vox_prob[idx[0],idx[1],idx[2], NUM_CLASSES+1] = vox_points.size
         for p in vox_points:
             vox_prob[idx[0],idx[1],idx[2], flat_pred_class[p]]  +=  1 / vox_points.size
         
 
-    print('test')
-    np.savez_compressed(os.path.join('/scratch/thesis/data/segmented/', 'voxelgrid_%s.npz' % scene_name), volume=vox_prob)
-    # class_vox = [0 for _ in range(NUM_CLASSES)]
+    print('scene %s segmented' % scene_name)
+    return vox_prob
+        # class_vox = [0 for _ in range(NUM_CLASSES)]
     # _, uvlabel, _ = pc.point_cloud_label_to_surface_voxel_label_fast(batch_data[0:scene_end,:,0:3].reshape(-1, 3), pred_class[0:scene_end,:].reshape(-1), res=0.05)
     # for l in range(NUM_CLASSES):
     #         class_vox[l] += np.sum(uvlabel[:]==l)
@@ -172,3 +176,4 @@ def eval_scene(scene_id, scene_name, sess, ops):
 
 if __name__ == "__main__":
     segment("/scratch/thesis/segmentation/model/model.ckpt")
+    print('Done')

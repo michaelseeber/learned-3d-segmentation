@@ -38,7 +38,20 @@
             "args": [
                 "--scene_train_list_path", "/scratch/thesis/data/scenes/reconstruct_gt/list.txt",
                 "--scene_val_list_path", "/scratch/thesis/data/scenes/reconstruct_gt/list.txt",
-                "--model_path", "/scratch/code/LearningPriors/model",
+                "--model_path", "/scratch/thesis/reconstruction/model",
+                "--nclasses", "22"
+    
+            ]
+        },
+        {
+            "name": "reconstruct",
+            "type": "python",
+            "request": "launch",
+            "program": "/scratch/thesis/reconstruction/reconstruct.py",
+            "args": [
+                "--scene_train_list_path", "/scratch/thesis/data/scenes/reconstruct_gt/list.txt",
+                "--scene_val_list_path", "/scratch/thesis/data/scenes/reconstruct_gt/list.txt",
+                "--model_path", "/scratch/thesis/reconstruction/model/checkpoint/final",
                 "--nclasses", "22"
     
             ]
