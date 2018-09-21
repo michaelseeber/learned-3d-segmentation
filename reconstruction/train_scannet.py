@@ -248,32 +248,32 @@ def classification_accuracy(y_true, y_pred):
 
     return freespace_accuracy, occupied_accuracy, semantic_accuracy
 
-
 def categorical_crossentropy(y_true, y_pred, params):
     nclasses = y_true.shape[-1]
 
     with tf.name_scope("categorical_cross_entropy"):
-        y_true = tf.nn.softmax(params["softmax_scale"] * y_true)
-        # y_pred = tf.nn.softmax(params["softmax_scale"] * y_pred)
-
         y_true = tf.clip_by_value(y_true, EPSILON, 1.0 - EPSILON)
         y_pred = tf.clip_by_value(y_pred, EPSILON, 1.0 - EPSILON)
 
         # Measure how close we are to unknown class.
-        unkown_weights = 1 - y_true[..., -2][..., None]
-
-        # Measure how close we are to unobserved class by measuring KL
-        # divergence to uniform distribution.
-        unobserved_weights = tf.log(tf.cast(nclasses, tf.float32)) + \
-                             tf.reduce_sum(y_true * tf.log(y_true),
-                                           axis=-1, keep_dims=True)
-
-        # Final per voxel loss function weights.
-        weights = tf.maximum(EPSILON, unkown_weights * unobserved_weights)
+        # unkown_weights = 1 - y_true[..., -2][..., None]
+        freespace_mask = tf.equal(tf.argmax(y_true, axis=-1), 21) #freespace
+        known_mask     = ~tf.equal(tf.argmax(y_true, axis=-1), 0) #0 is unknown
+        occupied_mask  = tf.logical_and(~freespace_mask, known_mask)
 
         # Compute weighted cross entropy.
-        cross_entropy = -tf.reduce_sum(weights * y_true * tf.log(y_pred)) / \
-                         tf.reduce_sum(weights)
+        cross_entropy = y_true * tf.log(y_pred)
+
+        # Compute weighted cross entropy.
+        freespace_cross_entropy = \
+            -tf.reduce_sum(tf.boolean_mask(cross_entropy, freespace_mask)) / \
+             (tf.reduce_sum(tf.cast(freespace_mask, tf.float32)) + EPSILON)
+
+        occupied_cross_entropy = \
+            -tf.reduce_sum(tf.boolean_mask(cross_entropy, occupied_mask)) / \
+             (tf.reduce_sum(tf.cast(occupied_mask, tf.float32)) + EPSILON)
+
+        cross_entropy = freespace_cross_entropy + params["loss_weight"]* occupied_cross_entropy
 
     return cross_entropy
 
@@ -821,7 +821,7 @@ def train_model(scene_train_list_path, scene_val_list_path,
             log_writer.add_summary(summary, epoch)
 
             train_saver.save(sess, os.path.join(checkpoint_path, "checkpoint"),
-                             global_step=epoch, write_meta_graph=False)
+                             global_step=epoch, write_meta_graph=True) #FALSE
 
         model_saver.save(sess, os.path.join(checkpoint_path, "final"),
                          write_meta_graph=True)
@@ -848,11 +848,13 @@ def parse_args():
     parser.add_argument("--lam", type=float, default=1.0)
 
     parser.add_argument("--batch_size", type=int, default=1) #3
-    parser.add_argument("--nepochs", type=int, default=50)
+    parser.add_argument("--nepochs", type=int, default=5) #50
     parser.add_argument("--epoch_npasses", type=int, default=1)
     parser.add_argument("--val_nbatches", type=int, default=15)
     parser.add_argument("--learning_rate", type=float, default=0.0001)
     parser.add_argument("--softmax_scale", type=float, default=10)
+
+    parser.add_argument("--loss_weight", type=float, default=30)
 
     return parser.parse_args()
 
@@ -881,6 +883,7 @@ def main():
         "lam": args.lam,
         "learning_rate": args.learning_rate,
         "softmax_scale": args.softmax_scale,
+        "loss_weight": args.loss_weight
     }
 
     train_model(args.scene_train_list_path,

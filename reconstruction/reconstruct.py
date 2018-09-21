@@ -5,30 +5,23 @@ import numpy as np
 import tensorflow as tf
 from train_scannet import pointnet_data_generator, build_model
 from skimage.measure import marching_cubes_lewiner
+import plyfile
 
 
 SEG_POINTCLOUDS_PATH = '/scratch/thesis/data/segmented'
 
 
 
-def evaluate(scene_train_list_path, scene_val_list_path,
-                model_path, params):
+def evaluate(data, model_path, params):
     batch_size = params["batch_size"]
     nlevels = params["nlevels"]
+    nclasses = params["nclasses"]
+    
     nrows = params["nrows"]
     ncols = params["ncols"]
     nslices = params["nslices"]
-    nclasses = params["nclasses"]
-    val_nbatches = params["val_nbatches"]
-
-
-    val_params = dict(params)
-    val_params["epoch_npasses"] = -1
-    val_data_generator = \
-        pointnet_data_generator(scene_val_list_path, val_params)
 
     probs, datacost, u, u_, m, l = build_model(params)
-    groundtruth = tf.placeholder(tf.float32, probs[0].shape, name="groundtruth")
 
     u_init = []
     u_init_ = []
@@ -61,104 +54,82 @@ def evaluate(scene_train_list_path, scene_val_list_path,
         saver = tf.train.Saver() 
         saver.restore(sess, model_path)
         print("Model restored")
+            
+        feed_dict = {}
 
-        sess.run(tf.global_variables_initializer())
+        data = data[np.newaxis, ...]
+        feed_dict[datacost] = data[:, :nrows, :ncols, :nslices, :]
 
-        # for epoch in range(params["nepochs"]):
-        for _ in range(val_nbatches):
-            datacost_batch, groundtruth_batch = next(val_data_generator)
+        for level in range(nlevels):
+            u_init[level][:] = 1.0 / nclasses
+            u_init_[level][:] = 1.0 / nclasses
+            m_init[level][:] = 0.0
+            l_init[level][:] = 0.0
+            feed_dict[u[level]] = u_init[level][:]
+            feed_dict[u_[level]] = u_init_[level][:]
+            feed_dict[m[level]] = m_init[level][:]
+            feed_dict[l[level]] = l_init[level][:]
 
-            num_batch_samples = datacost_batch.shape[0]
+        pred = sess.run(
+            [tf.argmax(probs[0], axis=-1)],
+            feed_dict=feed_dict
+        )
 
-            feed_dict = {}
-
-            feed_dict[datacost] = datacost_batch
-            feed_dict[groundtruth] = groundtruth_batch
-
-            for level in range(nlevels):
-                u_init[level][:] = 1.0 / nclasses
-                u_init_[level][:] = 1.0 / nclasses
-                m_init[level][:] = 0.0
-                l_init[level][:] = 0.0
-                feed_dict[u[level]] = u_init[level][:num_batch_samples]
-                feed_dict[u_[level]] = u_init_[level][:num_batch_samples]
-                feed_dict[m[level]] = m_init[level][:num_batch_samples]
-                feed_dict[l[level]] = l_init[level][:num_batch_samples]
-
-            pred = sess.run(
-                [tf.argmax(probs[0], axis=-1)],
-                feed_dict=feed_dict
-            )
+        return np.squeeze(pred[0])
 
 
             
+SEG_POINTCLOUDS_PATH = '/scratch/thesis/data/segmented'
+GROUNDTRUTH_PATH = '/scratch/thesis/data/scenes/reconstruct_gt'
 
 def reconstruct():
 
     args = parse_args()
 
-    np.random.seed(0)
-    tf.set_random_seed(0)
-
-    tf.logging.set_verbosity(tf.logging.INFO)
+    scene_name = "scene0000_00"
+    datacost_path = os.path.join(SEG_POINTCLOUDS_PATH,"voxelgrid_" + scene_name +".npz")
+    datacost_data = np.load(datacost_path)
+    datacost = datacost_data["volume"]
 
     params = {
-        "nepochs": args.nepochs,
-        "epoch_npasses": args.epoch_npasses,
-        "val_nbatches": args.val_nbatches,
-        "batch_size": args.batch_size,
-        "nlevels": args.nlevels,
+        "nrows": int(datacost.shape[0] / 4)*4,
+        "ncols": int(datacost.shape[1] / 4)*4,
+        "nslices": int(datacost.shape[2] / 4)*4,
+        "nlevels": 3,
+        "batch_size": 1,
         "nclasses": args.nclasses,
-        "nrows": args.nrows,
-        "ncols": args.ncols,
-        "nslices": args.nslices,
         "niter": args.niter,
         "sig": args.sig,
         "tau": args.tau,
         "lam": args.lam,
-        "learning_rate": args.learning_rate,
-        "softmax_scale": args.softmax_scale,
+        "softmax_scale": 10,
     }
 
-    evaluate(args.scene_train_list_path,
-                args.scene_val_list_path, args.model_path, params)
+    prediction = evaluate(datacost, args.model_path, params)
+
+    prediction[prediction!=21] = 1
+    prediction[prediction==21] = 0
+
+    extract_mesh_marching_cubes('/scratch/test.ply', prediction)
 
 
 
 
 def parse_args():
     parser = argparse.ArgumentParser()
-
-    # parser.add_argument("--scene_path", required=True)
-    parser.add_argument("--scene_train_list_path", required=True)
-    parser.add_argument("--scene_val_list_path", required=True)
     parser.add_argument("--model_path", required=True)
-
     parser.add_argument("--nclasses", type=int, required=True)
-
-    parser.add_argument("--nlevels", type=int, default=3)
-    parser.add_argument("--nrows", type=int, default=24)
-    parser.add_argument("--ncols", type=int, default=24)
-    parser.add_argument("--nslices", type=int, default=24)
-
     parser.add_argument("--niter", type=int, default=50)
     parser.add_argument("--sig", type=float, default=0.2)
     parser.add_argument("--tau", type=float, default=0.2)
     parser.add_argument("--lam", type=float, default=1.0)
-
-    parser.add_argument("--batch_size", type=int, default=1) #3
-    parser.add_argument("--nepochs", type=int, default=1000)
-    parser.add_argument("--epoch_npasses", type=int, default=1)
-    parser.add_argument("--val_nbatches", type=int, default=15)
-    parser.add_argument("--learning_rate", type=float, default=0.0001)
-    parser.add_argument("--softmax_scale", type=float, default=10)
 
     return parser.parse_args()
 
 def extract_mesh_marching_cubes(path, volume, color=None, level=0.5,
                                 step_size=1.0, gradient_direction="ascent"):
     if level > volume.max() or level < volume.min():
-        return
+        print('error')
 
     verts, faces, normals, values = marching_cubes_lewiner(
         volume, level=level, step_size=step_size,
@@ -184,9 +155,7 @@ def extract_mesh_marching_cubes(path, volume, color=None, level=0.5,
     ply_faces["vertex_indices"] = faces
     ply_faces = plyfile.PlyElement.describe(ply_faces, "face")
 
-    with tempfile.NamedTemporaryFile(dir=".", delete=False) as tmpfile:
-        plyfile.PlyData([ply_verts, ply_faces]).write(tmpfile.name)
-        shutil.move(tmpfile.name, path)
+    plyfile.PlyData([ply_verts, ply_faces]).write(path)
 
 
 if __name__ == "__main__":

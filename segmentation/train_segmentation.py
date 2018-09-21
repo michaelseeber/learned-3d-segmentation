@@ -30,22 +30,20 @@ import dataset
 #     ptvsd.wait_for_attach()
 
 parser = argparse.ArgumentParser()
-# parser.add_argument('--data_path', required = True)
 parser.add_argument('--gpu', type=int, default=0, help='GPU to use [default: GPU 0]')
 parser.add_argument('--log_dir', default='model', help='Log dir [default: log]')
 parser.add_argument('--num_point', type=int, default=8192, help='Point number [default: 4096]')
 parser.add_argument('--max_epoch', type=int, default=500000, help='Epoch to run [default: 50]')
-parser.add_argument('--batch_size', type=int, default=10, help='Batch Size during training [default: 1]')
+parser.add_argument('--batch_size', type=int, default=32, help='Batch Size during training [default: 1]')
 parser.add_argument('--learning_rate', type=float, default=0.001, help='Initial learning rate [default: 0.001]')
 parser.add_argument('--momentum', type=float, default=0.9, help='Initial learning rate [default: 0.9]')
 parser.add_argument('--optimizer', default='adam', help='adam or momentum [default: adam]')
-parser.add_argument('--decay_step', type=int, default=300000, help='Decay step for lr decay [default: 300000]')
-parser.add_argument('--decay_rate', type=float, default=0.5, help='Decay rate for lr decay [default: 0.5]')
+parser.add_argument('--decay_step', type=int, default=200000, help='Decay step for lr decay [default: 300000]')
+parser.add_argument('--decay_rate', type=float, default=0.7, help='Decay rate for lr decay [default: 0.5]')
 # parser.add_argument('--test_scene', type=int, default=6, help='Which scene to use for test, option: 1-6 [default: 6]')
 FLAGS = parser.parse_args()
 
 
-# DATA_PATH = FLAGS.data_path 
 NUM_POINT = FLAGS.num_point
 BATCH_SIZE = FLAGS.batch_size
 MAX_EPOCH = FLAGS.max_epoch
@@ -201,9 +199,8 @@ def train():
             train_one_epoch(sess, ops, train_writer)
             
             # Save the variables to disk.
-            if epoch % 10 == 0:
+            if epoch % 5 == 0:
                 eval_one_epoch(sess, ops, test_writer)
-                # eval_whole_scene_one_epoch(sess, ops, test_writer)
                 save_path = saver.save(sess, os.path.join(LOG_DIR, "model.ckpt"))
                 log_string("Model saved in file: %s" % save_path)
 
@@ -225,7 +222,7 @@ def train_one_epoch(sess, ops, train_writer):
     loss_sum = 0
     
     for batch_idx in range(num_batches):
-        if batch_idx % 100 == 0:
+        if batch_idx % 10 == 0:
             print('Current batch/total batch num: %d/%d'%(batch_idx,num_batches))
         start_idx = batch_idx * BATCH_SIZE
         end_idx = (batch_idx+1) * BATCH_SIZE

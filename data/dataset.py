@@ -3,8 +3,23 @@ import sys
 import numpy as np
 import pickle
 
-DATA_PATH = "/scratch/thesis/data/scenes/apartments.pickle"
+DATA_PATH = "/scratch/thesis/data/scenes/"
 
+PICKLE_NAME="full_"
+PICKLE_INFO_PATH = "/scratch/thesis/data/scenes/full"
+
+def scene_name_to_id(name, split):
+    scene_list = []
+    with open(os.path.join(PICKLE_INFO_PATH, PICKLE_NAME + split +'.txt'), "r") as fid:
+        for line in fid:
+            line = line.strip()
+            if line:
+                scene_list.append(line)
+
+    
+
+    return scene_list.index(name)
+    
 
 class Block():
     def __init__(self, num_classes, npoints=8192, split='train'):
@@ -12,7 +27,7 @@ class Block():
         self.num_classes = num_classes
         self.split = split
 
-        with open(DATA_PATH, "rb") as f:
+        with open(os.path.join(DATA_PATH, PICKLE_NAME + '%s.pickle'%(split)), "rb") as f:
             self.allpoints, self.alllabels = pickle.load(f)
 
         if split=='train':
@@ -48,9 +63,6 @@ class Block():
             if len(curr_semantic_seg)==0:
                 continue
             mask = np.sum((curr_point_set[:,0:3] >= (currmin-0.01))*(curr_point_set[:,0:3] <= (currmax+0.01)),axis=1)==3
-            # vidx = np.ceil((curr_point_set[mask,0:3]-currmin)/(currmax-currmin)*[31.0,31.0,62.0])
-            # vidx = np.unique(vidx[:,0]*31.0*62.0+vidx[:,1]*62.0+vidx[:,2])
-            # isvalid = np.sum(curr_semantic_seg>0)/len(curr_semantic_seg)>=0.7 and len(vidx)/31.0/31.0/62.0>=0.02
             isvalid = True
             if isvalid:
                 break
@@ -79,7 +91,7 @@ class WholeScene():
         self.num_classes = num_classes
         self.split = split
 
-        with open(DATA_PATH, "rb") as f:
+        with open(os.path.join(DATA_PATH, PICKLE_NAME + '%s.pickle'%(split)), "rb") as f:
             self.allpoints, self.alllabels = pickle.load(f)
 
         if split=='train':

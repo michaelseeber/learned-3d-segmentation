@@ -24,11 +24,12 @@ import pandas as pd
 
 NUM_CLASSES = 21
 NUM_POINT = 8192
-BATCH_SIZE = 40
+BATCH_SIZE = 50
+TEST_WHOLE_SCENE = dataset.WholeScene(num_classes = NUM_CLASSES, split="test")
+MODEL_PATH = "/scratch/thesis/segmentation/model/model.ckpt"
 
-TEST_WHOLE_SCENE = dataset.WholeScene(num_classes = NUM_CLASSES)
 
-def segment(model_path):
+def segment():
     with tf.device('/gpu:0'):
         pointclouds_pl, labels_pl, sampleweights_pl = placeholder_inputs(BATCH_SIZE, NUM_POINT)
         is_training_pl = tf.placeholder(tf.bool, shape=())
@@ -53,10 +54,12 @@ def segment(model_path):
             if line:
                 scene_list.append(line)
     
+    # scene_list = ["scene0255_01"]
+
     evaluated_scenes = []
     with tf.Session(config=config) as sess:
         # Restore variables from model_path
-        saver.restore(sess, model_path)
+        saver.restore(sess, MODEL_PATH)
         print("Model restored")
 
         ops = {'pointclouds_pl': pointclouds_pl,
@@ -68,8 +71,8 @@ def segment(model_path):
            'step': batch}
 
         # eval_whole_scene_one_epoch(sess, ops)
-        for idx, scene_name in enumerate(scene_list):
-            evaluated_scenes.append(eval_scene(idx, scene_name, sess, ops))\
+        for scene_name in scene_list:
+            evaluated_scenes.append(eval_scene(scene_name, sess, ops))\
 
     # apply convolution to reduct to dimension of datacost
     tf.reset_default_graph()
@@ -87,12 +90,12 @@ def segment(model_path):
         print('Saving %s datacost to disk' % scene_name)
 
 
-
-def eval_scene(scene_id, scene_name, sess, ops):
+def eval_scene(scene_name, sess, ops):
     is_training = False
     
     print('----')
 
+    scene_id = dataset.scene_name_to_id(scene_name,split="train")
     batch_data, gt_label, _ = TEST_WHOLE_SCENE[scene_id]
 
     scene_end = batch_data.shape[0]
@@ -134,9 +137,9 @@ def eval_scene(scene_id, scene_name, sess, ops):
     voxelgrid_id = cloud.add_structure("voxelgrid", sizes=[0.05, 0.05, 0.05], bb_cuboid=False)
     voxelgrid = cloud.structures[voxelgrid_id]
 
-    original = PyntCloud.from_file("/scratch/thesis/data/scenes/full/scene0000_00/scene0000_00_vh_clean_2.ply")
-    original_grid_id = original.add_structure("voxelgrid", sizes=[0.05, 0.05, 0.05], bb_cuboid=False)
-    original_grid = original.structures[original_grid_id]
+    # original = PyntCloud.from_file("/scratch/thesis/data/scenes/full/scene0000_00/scene0000_00_vh_clean_2.ply")
+    # original_grid_id = original.add_structure("voxelgrid", sizes=[0.05, 0.05, 0.05], bb_cuboid=False)
+    # original_grid = original.structures[original_grid_id]
 
     color = None 
     pc.extract_mesh_marching_cubes(os.path.join(BASE_DIR, 'results', 'voxelgrid_%s.ply' % scene_name), voxelgrid.get_feature_vector(mode="binary"), color=color)
@@ -175,5 +178,5 @@ def eval_scene(scene_id, scene_name, sess, ops):
 
 
 if __name__ == "__main__":
-    segment("/scratch/thesis/segmentation/model/model.ckpt")
+    segment()
     print('Done')

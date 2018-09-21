@@ -5,6 +5,8 @@ import scannet_util
 import json
 import numpy as np
 import pickle
+import random
+import argparse
 from plyfile import PlyData, PlyElement
 BASE_DIR = os.path.dirname(__file__)
 
@@ -18,9 +20,12 @@ RAW2SCANNET = scannet_util.g_raw2scannet
 #     ptvsd.enable_attach("thesis", address = ('192.33.89.41', 3000))
 #     ptvsd.wait_for_attach()
 
+parser = argparse.ArgumentParser()
+parser.add_argument("--listname", required=True)
+args = parser.parse_args()
 
-SCANNET_DIR = '/scratch/thesis/data/scenes'
-LIST_NAME = 'apartments' 
+SCANNET_DIR = '/scratch/thesis/data/scenes/full'
+LIST_NAME = args.listname
 SCENE_NAMES = [line.rstrip() for line in open(os.path.join(SCANNET_DIR, LIST_NAME + '.txt'))]
 
 def main():
@@ -28,9 +33,23 @@ def main():
     # fetch all scannet labels from scenes - used just for information
     # labels = fetch_classes()
 
+    
+    random.shuffle(SCENE_NAMES)
+    train_scenes = SCENE_NAMES[:int((len(SCENE_NAMES)+1)*.80)] #Remaining 80% to training set
+    test_scenes = SCENE_NAMES[int(len(SCENE_NAMES)*.80+1):] #Splits 20% data to test set
+
+    #write to disk scene names of split
+    with open(os.path.join(SCANNET_DIR, LIST_NAME + '_train.txt'), 'w') as f:
+        for item in train_scenes:
+            f.write("{}\n".format(item))
+    with open(os.path.join(SCANNET_DIR, LIST_NAME + '_test.txt'), 'w') as f:
+        for item in test_scenes:
+            f.write("{}\n".format(item))
+        
+
     allpoints = []
     alllabels = []
-    for scene_name in SCENE_NAMES:
+    for scene_name in train_scenes:
         print("Processing scene %s" % scene_name)
         #load data
         points, labels = collect_data_one_scene(scene_name)
@@ -38,9 +57,27 @@ def main():
         # points[:, 0:3] = points[:, 0:3] - points[:, 0:3].mean(axis=0, keepdims=True)
         allpoints.append(points)
         alllabels.append(labels)
+
     #save to disk
-    with open(os.path.join(SCANNET_DIR, LIST_NAME + '.pickle'), 'wb') as f:
-        print("Saving to disk...")
+    with open(os.path.join(SCANNET_DIR, LIST_NAME + '_train.pickle'), 'wb') as f:
+        print("Saving train split to disk...")
+        pickle.dump([allpoints, np.squeeze(alllabels)], f)
+        print("Done!")
+
+
+    allpoints = []
+    alllabels = []
+    for scene_name in test_scenes:
+        print("Processing scene %s" % scene_name)
+        #load data
+        points, labels = collect_data_one_scene(scene_name)
+        #Center PointCloud
+        # points[:, 0:3] = points[:, 0:3] - points[:, 0:3].mean(axis=0, keepdims=True)
+        allpoints.append(points)
+        alllabels.append(labels)    
+
+    with open(os.path.join(SCANNET_DIR, LIST_NAME + '_test.pickle'), 'wb') as f:
+        print("Saving test split to disk...")
         pickle.dump([allpoints, np.squeeze(alllabels)], f)
         print("Done!")
 
@@ -48,9 +85,10 @@ def main():
 
 
 
+
 def collect_data_one_scene(scene_name):
     # Over-segmented segments: maps from segment to vertex/point IDs
-    data_folder = os.path.join(SCANNET_DIR, 'full', scene_name)
+    data_folder = os.path.join(SCANNET_DIR, scene_name)
     mesh_seg_filename = os.path.join(data_folder, '%s_vh_clean_2.0.010000.segs.json'%(scene_name))
     with open(mesh_seg_filename) as jsondata:
         d = json.load(jsondata)
@@ -127,7 +165,6 @@ def fetch_classes():
                 labels.add(x['label']) 
     print("Extracted %d classes" % len(labels))
     return list(labels)
-
 
 if __name__ == "__main__":
     main()
