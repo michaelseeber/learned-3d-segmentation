@@ -36,8 +36,8 @@
             "request": "launch",
             "program": "/scratch/thesis/reconstruction/train_scannet.py",
             "args": [
-                "--scene_train_list_path", "/scratch/thesis/data/scenes/reconstruct_gt/list.txt",
-                "--scene_val_list_path", "/scratch/thesis/data/scenes/reconstruct_gt/list.txt",
+                "--scene_train_list_path", "/scratch/thesis/data/scenes/reconstruct_gt/full_test/list.txt",
+                "--scene_val_list_path", "/scratch/thesis/data/scenes/reconstruct_gt/full_test/list_validation.txt",
                 "--model_path", "/scratch/thesis/reconstruction/model",
                 "--nclasses", "22"
     

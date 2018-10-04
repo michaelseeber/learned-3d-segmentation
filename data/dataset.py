@@ -6,7 +6,10 @@ import pickle
 DATA_PATH = "/scratch/thesis/data/scenes/"
 
 PICKLE_NAME="full_"
+# PICKLE_NAME="apartments_"
+# PICKLE_NAME="apartments_livingroomlounge_"
 PICKLE_INFO_PATH = "/scratch/thesis/data/scenes/full"
+
 
 def scene_name_to_id(name, split):
     scene_list = []
@@ -103,7 +106,7 @@ class WholeScene():
             labelweights = labelweights/np.sum(labelweights)
             self.labelweights = 1/np.log(1.2+labelweights)
         elif split=='test':
-            self.labelweights = np.ones(self.num_classes-1)
+            self.labelweights = np.ones(self.num_classes)
     def __getitem__(self, index):
         point_set_ini = self.allpoints[index]
         semantic_seg_ini = np.squeeze(self.alllabels[index].astype(np.int32))
@@ -126,16 +129,16 @@ class WholeScene():
                     continue
                 mask = np.sum((cur_point_set[:,0:3]>=(curmin-0.001))*(cur_point_set[:,0:3]<=(curmax+0.001)),axis=1)==3
                 choice = np.random.choice(len(cur_semantic_seg), self.npoints, replace=True)
-                point_set = cur_point_set[choice,:] # Nx3
-                semantic_seg = cur_semantic_seg[choice] # N
+                point_set = cur_point_set[choice,:]
+                semantic_seg = cur_semantic_seg[choice]
                 mask = mask[choice]
                 if sum(mask)/float(len(mask))<0.01:
                     continue
                 sample_weight = self.labelweights[semantic_seg]
-                sample_weight *= mask # N
-                point_sets.append(np.expand_dims(point_set,0)) # 1xNx3
-                semantic_segs.append(np.expand_dims(semantic_seg,0)) # 1xN
-                sample_weights.append(np.expand_dims(sample_weight,0)) # 1xN
+                sample_weight *= mask 
+                point_sets.append(np.expand_dims(point_set,0)) 
+                semantic_segs.append(np.expand_dims(semantic_seg,0))
+                sample_weights.append(np.expand_dims(sample_weight,0)) 
         point_sets = np.concatenate(tuple(point_sets),axis=0)
         semantic_segs = np.concatenate(tuple(semantic_segs),axis=0)
         sample_weights = np.concatenate(tuple(sample_weights),axis=0)

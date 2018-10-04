@@ -8,7 +8,7 @@ import tensorflow as tf
 EPSILON = 10e-8
 
 SEG_POINTCLOUDS_PATH = '/scratch/thesis/data/segmented'
-GROUNDTRUTH_PATH = '/scratch/thesis/data/scenes/reconstruct_gt'
+GROUNDTRUTH_PATH = '/scratch/thesis/data/scenes/reconstruct_gt/full_test'
 
 
 def mkdir_if_not_exists(path):
@@ -418,6 +418,7 @@ def pointnet_data_generator(scene_list_path, params):
             if line:
                 scene_list.append(line)
 
+
     # Load the data for all scenes.
     datacosts = []
     groundtruths = []
@@ -443,8 +444,9 @@ def pointnet_data_generator(scene_list_path, params):
 
         groundtruth = np.load(groundtruth_path)["probs"]
         
-        # ugly hack - remove 1 lazer in z direkction of groundtruth to fix dimensions
-        groundtruth = groundtruth[:,:,0:60, :]
+        # ugly hacks - remove layers in of groundtruth to fix dimensions
+        d_dims= datacost.shape
+        groundtruth = groundtruth[0:d_dims[0],0:d_dims[1], 0:d_dims[2], 0:d_dims[3]]
 
         # Make sure the data is compatible with the parameters.
         print(datacost_path)
@@ -847,14 +849,14 @@ def parse_args():
     parser.add_argument("--tau", type=float, default=0.2)
     parser.add_argument("--lam", type=float, default=1.0)
 
-    parser.add_argument("--batch_size", type=int, default=1) #3
-    parser.add_argument("--nepochs", type=int, default=5) #50
-    parser.add_argument("--epoch_npasses", type=int, default=1)
+    parser.add_argument("--batch_size", type=int, default=3) #3
+    parser.add_argument("--nepochs", type=int, default=50) #50
+    parser.add_argument("--epoch_npasses", type=int, default=10)
     parser.add_argument("--val_nbatches", type=int, default=15)
     parser.add_argument("--learning_rate", type=float, default=0.0001)
     parser.add_argument("--softmax_scale", type=float, default=10)
 
-    parser.add_argument("--loss_weight", type=float, default=30)
+    parser.add_argument("--loss_weight", type=float, default=1.6)
 
     return parser.parse_args()
 

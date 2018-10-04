@@ -17,7 +17,6 @@ sys.path.append(os.path.join(BASE_DIR, 'utils'))
 sys.path.append(os.path.join(ROOT_DIR, 'data'))
 import provider
 import tf_util
-import pc_util as pc
 import label_util
 from model import *
 import dataset
@@ -190,7 +189,7 @@ def train():
                'merged': merged,
                'step': batch}
 
-
+        best_acc = -1
         for epoch in range(MAX_EPOCH):
 
             log_string('**** EPOCH %03d ****' % (epoch))
@@ -200,9 +199,16 @@ def train():
             
             # Save the variables to disk.
             if epoch % 5 == 0:
-                eval_one_epoch(sess, ops, test_writer)
+                acc1 = eval_one_epoch(sess, ops, test_writer)
+                acc2 = eval_one_epoch(sess, ops, test_writer)
+                acc = (acc1 + acc2) /2
                 save_path = saver.save(sess, os.path.join(LOG_DIR, "model.ckpt"))
                 log_string("Model saved in file: %s" % save_path)
+
+                if acc > best_acc:
+                    best_acc = acc
+                    save_path = saver.save(sess, os.path.join(LOG_DIR, "best_model_epoch_%03d.ckpt"%(epoch)))
+                    log_string("Best Model saved in file: %s" % save_path)
 
     
         
@@ -296,29 +302,30 @@ def eval_one_epoch(sess, ops, test_writer):
                 total_seen_class[l] += np.sum((batch_label==l) & (batch_smpw>0))
                 total_correct_class[l] += np.sum((pred_val==l) & (batch_label==l) & (batch_smpw>0))
 
-        for b in range(batch_label.shape[0]):
-            _, uvlabel, _ = pc.point_cloud_label_to_surface_voxel_label_fast(batch_data[b,batch_smpw[b,:]>0,:], np.concatenate((np.expand_dims(batch_label[b,batch_smpw[b,:]>0],1),np.expand_dims(pred_val[b,batch_smpw[b,:]>0],1)),axis=1), res=0.02)
-            total_correct_vox += np.sum((uvlabel[:,0]==uvlabel[:,1])&(uvlabel[:,0]>0))
-            total_seen_vox += np.sum(uvlabel[:,0]>0)
-            tmp,_ = np.histogram(uvlabel[:,0],range(22))
-            labelweights_vox += tmp
-            for l in range(NUM_CLASSES):
-                    total_seen_class_vox[l] += np.sum(uvlabel[:,0]==l)
-                    total_correct_class_vox[l] += np.sum((uvlabel[:,0]==l) & (uvlabel[:,1]==l))
+        # for b in range(batch_label.shape[0]):
+        #     _, uvlabel, _ = pc.point_cloud_label_to_surface_voxel_label_fast(batch_data[b,batch_smpw[b,:]>0,:], np.concatenate((np.expand_dims(batch_label[b,batch_smpw[b,:]>0],1),np.expand_dims(pred_val[b,batch_smpw[b,:]>0],1)),axis=1), res=0.02)
+        #     total_correct_vox += np.sum((uvlabel[:,0]==uvlabel[:,1])&(uvlabel[:,0]>0))
+        #     total_seen_vox += np.sum(uvlabel[:,0]>0)
+        #     tmp,_ = np.histogram(uvlabel[:,0],range(22))
+        #     labelweights_vox += tmp
+        #     for l in range(NUM_CLASSES):
+        #             total_seen_class_vox[l] += np.sum(uvlabel[:,0]==l)
+        #             total_correct_class_vox[l] += np.sum((uvlabel[:,0]==l) & (uvlabel[:,1]==l))
 
     log_string('eval mean loss: %f' % (loss_sum / float(num_batches)))
-    log_string('eval point accuracy vox: %f'% (total_correct_vox / float(total_seen_vox)))
-    log_string('eval point avg class acc vox: %f' % (np.mean(np.array(total_correct_class_vox[1:])/(np.array(total_seen_class_vox[1:],dtype=np.float)+1e-6))))
+    # log_string('eval point accuracy vox: %f'% (total_correct_vox / float(total_seen_vox)))
+    # log_string('eval point avg class acc vox: %f' % (np.mean(np.array(total_correct_class_vox[1:])/(np.array(total_seen_class_vox[1:],dtype=np.float)+1e-6))))
     log_string('eval point accuracy: %f'% (total_correct / float(total_seen)))
     log_string('eval point avg class acc: %f' % (np.mean(np.array(total_correct_class[1:])/(np.array(total_seen_class[1:],dtype=np.float)+1e-6))))
-    labelweights_vox = labelweights_vox[1:].astype(np.float32)/np.sum(labelweights_vox[1:].astype(np.float32))
+    # labelweights_vox = labelweights_vox[1:].astype(np.float32)/np.sum(labelweights_vox[1:].astype(np.float32))
     caliweights = np.array([0.388,0.357,0.038,0.033,0.017,0.02,0.016,0.025,0.002,0.002,0.002,0.007,0.006,0.022,0.004,0.0004,0.003,0.002,0.024,0.029])
     log_string('eval point calibrated average acc: %f' % (np.average(np.array(total_correct_class[1:])/(np.array(total_seen_class[1:],dtype=np.float)+1e-6),weights=caliweights)))
-    per_class_str = 'vox based --------'
-    for l in range(1,NUM_CLASSES):
-        per_class_str += 'class %d weight: %f, acc: %f; \n' % (l,labelweights_vox[l-1],total_correct_class[l]/float(total_seen_class[l]))
-    log_string(per_class_str)
+    # per_class_str = 'vox based --------'
+    # for l in range(1,NUM_CLASSES):
+    #     per_class_str += 'class %d weight: %f, acc: %f; \n' % (l,labelweights_vox[l-1],total_correct_class[l]/float(total_seen_class[l]))
+    # log_string(per_class_str)
 
+    return total_correct/float(total_seen)
     # unique_predictions, unique_counts = np.unique(np.concat(prediction), return_counts=True)
     # for i in range(unique_predictions.size):
     #     print("Label: %3s   |   Class: %15s   |   Count: %6s" % (unique_predictions[i], label_util.label2class(unique_predictions[i]) , counts[i])) 

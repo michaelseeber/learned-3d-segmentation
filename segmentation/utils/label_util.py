@@ -82,13 +82,13 @@ CONVERTED_COLORS = tuple(color for _, color in CONVERTED_LABEL_COLORS)
 
 def label2color(label, converted = False):
     if(converted == True):
-        return CONVERTED_COLORS[label]
+        return CONVERTED_COLORS[int(label)]
     else:
         return ALL_COLORS[label]
 
 def label2class(label, converted = False):
     if(converted == True):
-        return CONVERTED_CLASSES[label]
+        return CONVERTED_CLASSES[int(label)]
     else:
         return ALL_CLASSES[label]
 

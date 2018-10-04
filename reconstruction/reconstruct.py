@@ -3,16 +3,22 @@ import glob
 import argparse
 import numpy as np
 import tensorflow as tf
-from train_scannet import pointnet_data_generator, build_model
+from train_scannet import pointnet_data_generator, build_model, classification_accuracy
 from skimage.measure import marching_cubes_lewiner
 import plyfile
+import pandas as pd
 
 
 SEG_POINTCLOUDS_PATH = '/scratch/thesis/data/segmented'
+GROUNDTRUTH_PATH = '/scratch/thesis/data/scenes/reconstruct_gt/full_test'
+SCENE_LIST_PATH = '/scratch/thesis/data/scenes/reconstruct_gt/full_test/list_validation.txt'
+RESULTS_PATH = '/scratch/thesis/reconstruction/results'
+mesh_per_label = True
 
 
+def evaluate(data, data_gt, model_path, params, scene_name):
+    tf.reset_default_graph()
 
-def evaluate(data, model_path, params):
     batch_size = params["batch_size"]
     nlevels = params["nlevels"]
     nclasses = params["nclasses"]
@@ -22,6 +28,7 @@ def evaluate(data, model_path, params):
     nslices = params["nslices"]
 
     probs, datacost, u, u_, m, l = build_model(params)
+    groundtruth = tf.placeholder(tf.float32, probs[0].shape, name="groundtruth")
 
     u_init = []
     u_init_ = []
@@ -48,6 +55,8 @@ def evaluate(data, model_path, params):
                                 nslices_level],
                                dtype=np.float32))
 
+    freespace_accuracy_op, occupied_accuracy_op, semantic_accuracy_op = \
+        classification_accuracy(groundtruth, probs[0])
 
     with tf.Session() as sess:
         # Restore variables from model_path
@@ -60,6 +69,9 @@ def evaluate(data, model_path, params):
         data = data[np.newaxis, ...]
         feed_dict[datacost] = data[:, :nrows, :ncols, :nslices, :]
 
+        data_gt = data_gt[np.newaxis, ...]
+        feed_dict[groundtruth] = data_gt[:, :nrows, :ncols, :nslices, :]
+
         for level in range(nlevels):
             u_init[level][:] = 1.0 / nclasses
             u_init_[level][:] = 1.0 / nclasses
@@ -70,26 +82,30 @@ def evaluate(data, model_path, params):
             feed_dict[m[level]] = m_init[level][:]
             feed_dict[l[level]] = l_init[level][:]
 
-        pred = sess.run(
-            [tf.argmax(probs[0], axis=-1)],
+        pred, freespace_accuracy, occupied_accuracy, semantic_accuracy = sess.run(
+            [tf.argmax(probs[0], axis=-1), freespace_accuracy_op, occupied_accuracy_op, semantic_accuracy_op],
             feed_dict=feed_dict
         )
+
+        stats = {"scene": scene_name , "freespace_accuracy": freespace_accuracy, "occupied_accuracy": occupied_accuracy, "semantic_accuracy": semantic_accuracy}
+        add_stat(pd.DataFrame(stats, index=[0]))
 
         return np.squeeze(pred[0])
 
 
-            
-SEG_POINTCLOUDS_PATH = '/scratch/thesis/data/segmented'
-GROUNDTRUTH_PATH = '/scratch/thesis/data/scenes/reconstruct_gt'
+def reconstruct(scene_name):
 
-def reconstruct():
-
-    args = parse_args()
-
-    scene_name = "scene0000_00"
     datacost_path = os.path.join(SEG_POINTCLOUDS_PATH,"voxelgrid_" + scene_name +".npz")
     datacost_data = np.load(datacost_path)
     datacost = datacost_data["volume"]
+
+    groundtruth_path = os.path.join(GROUNDTRUTH_PATH, scene_name, "converted",
+                                    "groundtruth_model/probs.npz")
+    groundtruth = np.load(groundtruth_path)["probs"]
+        
+    # ugly hacks - remove layers in of groundtruth to fix dimensions
+    d_dims= datacost.shape
+    groundtruth = groundtruth[0:d_dims[0],0:d_dims[1], 0:d_dims[2], 0:d_dims[3]]
 
     params = {
         "nrows": int(datacost.shape[0] / 4)*4,
@@ -105,13 +121,38 @@ def reconstruct():
         "softmax_scale": 10,
     }
 
-    prediction = evaluate(datacost, args.model_path, params)
+    prediction = evaluate(datacost, groundtruth, args.model_path, params, scene_name)
+    
+    if not os.path.exists(os.path.join(RESULTS_PATH, scene_name)):
+        os.makedirs(os.path.join(RESULTS_PATH, scene_name))
 
+    if(mesh_per_label):
+        label_names = {}
+        label_colors = {}
+        with open('/scratch/thesis/data/scenes/reconstruct_gt/labels.txt', "r") as fid:
+            for line in fid:
+                line = line.strip()
+                if not line:
+                    continue
+                label = line.split()[0]
+                name = line.split()[1]
+                color = tuple(map(int, line.split()[3:]))
+                label_names[label] = name
+                label_colors[label] = color
+        for label in np.unique(prediction):
+            if(label != 0):
+                path = os.path.join(RESULTS_PATH, scene_name, label_names[str(label)] + '_predicted.ply')
+                color = label_colors[str(label)]
+
+                label_pred = np.array(prediction)
+                label_pred[label_pred==label] = 100 #100 because 0 and 1 are also labels
+                label_pred[label_pred!=100] = 0
+                
+                extract_mesh_colored(path, label_pred, color=color)
+    # 21 freespace
     prediction[prediction!=21] = 1
     prediction[prediction==21] = 0
-
-    extract_mesh_marching_cubes('/scratch/test.ply', prediction)
-
+    extract_mesh_colored(os.path.join(RESULTS_PATH, scene_name, "predicted.ply"), prediction)
 
 
 
@@ -126,7 +167,7 @@ def parse_args():
 
     return parser.parse_args()
 
-def extract_mesh_marching_cubes(path, volume, color=None, level=0.5,
+def extract_mesh_colored(path, volume, color=None, level=0.5,
                                 step_size=1.0, gradient_direction="ascent"):
     if level > volume.max() or level < volume.min():
         print('error')
@@ -158,5 +199,25 @@ def extract_mesh_marching_cubes(path, volume, color=None, level=0.5,
     plyfile.PlyData([ply_verts, ply_faces]).write(path)
 
 
+stats_dataframe = pd.DataFrame()
+def add_stat(data):
+    global stats_dataframe
+    stats_dataframe = stats_dataframe.append(data, ignore_index=True)
+
+
+
 if __name__ == "__main__":
-    reconstruct()
+    args = parse_args()
+
+    # scene_list = []
+    # with open(SCENE_LIST_PATH, "r") as fid:
+    #     for line in fid:
+    #         line = line.strip()
+    #         if line:
+    #             scene_list.append(line)
+
+    scene_list = ["scene0003_00"]
+
+    for scene_name in scene_list:
+        reconstruct(scene_name)
+    stats_dataframe.to_csv(os.path.join(RESULTS_PATH, 'results.csv'))
