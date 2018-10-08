@@ -49,7 +49,7 @@
             "request": "launch",
             "program": "/scratch/thesis/reconstruction/reconstruct.py",
             "args": [
-                "--model_path", "/scratch/thesis/reconstruction/model/checkpoint/final",
+                "--model_path", "/scratch/thesis/reconstruction/models_collection/final/checkpoint/final",
                 "--nclasses", "22"
     
             ]

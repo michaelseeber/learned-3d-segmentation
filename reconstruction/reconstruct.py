@@ -9,10 +9,10 @@ import plyfile
 import pandas as pd
 
 
-SEG_POINTCLOUDS_PATH = '/scratch/thesis/data/segmented'
+SEG_POINTCLOUDS_PATH = '/scratch/thesis/data/segmented/newSeg'
 GROUNDTRUTH_PATH = '/scratch/thesis/data/scenes/reconstruct_gt/full_test'
 SCENE_LIST_PATH = '/scratch/thesis/data/scenes/reconstruct_gt/full_test/list_validation.txt'
-RESULTS_PATH = '/scratch/thesis/reconstruction/results'
+RESULTS_PATH = '/scratch/thesis/reconstruction/results/finalSeg'
 mesh_per_label = True
 
 
@@ -55,7 +55,7 @@ def evaluate(data, data_gt, model_path, params, scene_name):
                                 nslices_level],
                                dtype=np.float32))
 
-    freespace_accuracy_op, occupied_accuracy_op, semantic_accuracy_op = \
+    freespace_accuracy_op, occupied_accuracy_op, semantic_accuracy_op, full_accuracy_op = \
         classification_accuracy(groundtruth, probs[0])
 
     with tf.Session() as sess:
@@ -82,12 +82,12 @@ def evaluate(data, data_gt, model_path, params, scene_name):
             feed_dict[m[level]] = m_init[level][:]
             feed_dict[l[level]] = l_init[level][:]
 
-        pred, freespace_accuracy, occupied_accuracy, semantic_accuracy = sess.run(
-            [tf.argmax(probs[0], axis=-1), freespace_accuracy_op, occupied_accuracy_op, semantic_accuracy_op],
+        pred, freespace_accuracy, occupied_accuracy, semantic_accuracy, full_accuracy = sess.run(
+            [tf.argmax(probs[0], axis=-1), freespace_accuracy_op, occupied_accuracy_op, semantic_accuracy_op, full_accuracy_op],
             feed_dict=feed_dict
         )
 
-        stats = {"scene": scene_name , "freespace_accuracy": freespace_accuracy, "occupied_accuracy": occupied_accuracy, "semantic_accuracy": semantic_accuracy}
+        stats = {"scene": scene_name , "freespace_accuracy": freespace_accuracy, "occupied_accuracy": occupied_accuracy, "semantic_accuracy": semantic_accuracy, full_accuracy: full_accuracy}
         add_stat(pd.DataFrame(stats, index=[0]))
 
         return np.squeeze(pred[0])
@@ -103,7 +103,7 @@ def reconstruct(scene_name):
                                     "groundtruth_model/probs.npz")
     groundtruth = np.load(groundtruth_path)["probs"]
         
-    # ugly hacks - remove layers in of groundtruth to fix dimensions
+    #rounding error hack - remove layers of groundtruth to fix dimensions
     d_dims= datacost.shape
     groundtruth = groundtruth[0:d_dims[0],0:d_dims[1], 0:d_dims[2], 0:d_dims[3]]
 
@@ -145,7 +145,7 @@ def reconstruct(scene_name):
                 color = label_colors[str(label)]
 
                 label_pred = np.array(prediction)
-                label_pred[label_pred==label] = 100 #100 because 0 and 1 are also labels
+                label_pred[label_pred==label] = 100 #100 because 0 and 1 are also labels and doesn't matter for mesh extraction
                 label_pred[label_pred!=100] = 0
                 
                 extract_mesh_colored(path, label_pred, color=color)
@@ -209,14 +209,14 @@ def add_stat(data):
 if __name__ == "__main__":
     args = parse_args()
 
-    # scene_list = []
-    # with open(SCENE_LIST_PATH, "r") as fid:
-    #     for line in fid:
-    #         line = line.strip()
-    #         if line:
-    #             scene_list.append(line)
+    scene_list = []
+    with open(SCENE_LIST_PATH, "r") as fid:
+        for line in fid:
+            line = line.strip()
+            if line:
+                scene_list.append(line)
 
-    scene_list = ["scene0003_00"]
+    # scene_list = ["scene0000_01"]
 
     for scene_name in scene_list:
         reconstruct(scene_name)

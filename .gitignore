@@ -2,14 +2,13 @@ reconstruction/model
 data/scenes
 segmentation/log
 segmentation/__pycache__
-HIL
 segmentation/model
 segmentation/results/
 data/scenes/
 data/preprocessing/reconstruction
 data/segmented
-justposition
 reconstruction/models_collection
 segmentation/models_collection
 segmentation/results_collection
 Experiments.ods
+reconstruction/results

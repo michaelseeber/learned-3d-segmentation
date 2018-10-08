@@ -22,7 +22,8 @@ def scene_name_to_id(name, split):
     
 
     return scene_list.index(name)
-    
+
+        
 
 class Block():
     def __init__(self, num_classes, npoints=8192, split='train'):
@@ -75,12 +76,6 @@ class Block():
         mask = mask[choice]
         sample_weight = self.labelweights[semantic_seg]
         sample_weight *= mask
-
-        # fout = open(os.path.join(BASE_DIR, 'block.obj'), 'w')
-        # for i in range(point_set.shape[0]):
-        #     color = label_util.label2color(semantic_seg[i])
-        #     fout.write('v %f %f %f %d %d %d\n' % (point_set[i,0],point_set[i,1], point_set[i,2], color[0], color[1], color[2]))
-        # fout.close()
 
         return point_set, semantic_seg, sample_weight
     

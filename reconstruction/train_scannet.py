@@ -7,7 +7,7 @@ import tensorflow as tf
 
 EPSILON = 10e-8
 
-SEG_POINTCLOUDS_PATH = '/scratch/thesis/data/segmented'
+SEG_POINTCLOUDS_PATH = '/scratch/thesis/data/segmented/oldSeg'
 GROUNDTRUTH_PATH = '/scratch/thesis/data/scenes/reconstruct_gt/full_test'
 
 
@@ -246,7 +246,9 @@ def classification_accuracy(y_true, y_pred):
             tf.boolean_mask(labels_true, occupied_mask),
             tf.boolean_mask(labels_pred, occupied_mask)), dtype=tf.float32))
 
-    return freespace_accuracy, occupied_accuracy, semantic_accuracy
+        full_accuracy = np.sum(labels_true == labels_pred) / labels_true.size
+
+    return freespace_accuracy, occupied_accuracy, semantic_accuracy, full_accuracy
 
 def categorical_crossentropy(y_true, y_pred, params):
     nclasses = y_true.shape[-1]
@@ -278,6 +280,29 @@ def categorical_crossentropy(y_true, y_pred, params):
     return cross_entropy
 
 
+def datacost_creation(input, nclasses):
+    
+    pointwise = conv_weight_variable(
+         "w1_datacost", [1, 1, 1, nclasses+1, nclasses], stddev=0.01)
+
+    enlarge1 = conv_weight_variable(
+         "w2_datacost", [3, 3, 3, nclasses, 32], stddev=0.01)   
+    enlarge2 = conv_weight_variable(
+         "w3_datacost", [6, 6, 6, 32, 64], stddev=0.01) 
+    compress = conv_weight_variable(
+    "w4_datacost", [1, 1, 1, 64, nclasses], stddev=0.01) 
+
+    pre = conv3d(input, pointwise)
+    pre = tf.nn.tanh(pre)
+    pre = conv3d(pre, enlarge1)
+    pre = tf.nn.tanh(pre)
+    pre = conv3d(pre, enlarge2)
+    pre = tf.nn.tanh(pre)  
+    pre = conv3d(pre, compress)
+    pre = tf.nn.tanh(pre)  
+
+    return pre
+
 def build_model(params):
     batch_size = params["batch_size"]
     nlevels = params["nlevels"]
@@ -289,8 +314,11 @@ def build_model(params):
 
     # Setup placeholders and variables.
 
-    d = tf.placeholder(tf.float32, [None, nrows, ncols,
-                                    nslices, nclasses], name="d")
+    input_grid = tf.placeholder(tf.float32, [None, nrows, ncols,
+                                    nslices, nclasses+1], name="input_grid")
+
+    
+    d = datacost_creation(input_grid, nclasses)
 
     u = []
     u_ = []
@@ -400,7 +428,7 @@ def build_model(params):
                                          + probs_residual,
                                          name="probs{}".format(level))
 
-    return probs, d, u, u_, m, l
+    return probs, input_grid, u, u_, m, l
 
 
 def pointnet_data_generator(scene_list_path, params):
@@ -451,8 +479,8 @@ def pointnet_data_generator(scene_list_path, params):
         # Make sure the data is compatible with the parameters.
         print(datacost_path)
         print(datacost.shape)
-        assert datacost.shape[3] == nclasses
-        assert datacost.shape == groundtruth.shape
+        assert datacost.shape[3] == nclasses+1
+        # assert datacost.shape == groundtruth.shape
 
         datacosts.append(datacost)
         groundtruths.append(groundtruth)
@@ -460,7 +488,7 @@ def pointnet_data_generator(scene_list_path, params):
     idxs = np.arange(len(datacosts))
 
     batch_datacost = np.empty(
-        (batch_size, nrows, ncols, nslices, nclasses), dtype=np.float32)
+        (batch_size, nrows, ncols, nslices, nclasses+1), dtype=np.float32)
     batch_groundtruth = np.empty(
         (batch_size, nrows, ncols, nslices, nclasses), dtype=np.float32)
 
@@ -596,7 +624,7 @@ def train_model(scene_train_list_path, scene_val_list_path,
                                dtype=np.float32))
 
     loss_op = categorical_crossentropy(groundtruth, probs[0], params)
-    freespace_accuracy_op, occupied_accuracy_op, semantic_accuracy_op = \
+    freespace_accuracy_op, occupied_accuracy_op, semantic_accuracy_op, _ = \
         classification_accuracy(groundtruth, probs[0])
 
     optimizer = tf.train.AdamOptimizer(learning_rate=params["learning_rate"])
@@ -850,13 +878,13 @@ def parse_args():
     parser.add_argument("--lam", type=float, default=1.0)
 
     parser.add_argument("--batch_size", type=int, default=3) #3
-    parser.add_argument("--nepochs", type=int, default=50) #50
-    parser.add_argument("--epoch_npasses", type=int, default=10)
+    parser.add_argument("--nepochs", type=int, default=500) #50
+    parser.add_argument("--epoch_npasses", type=int, default=1)
     parser.add_argument("--val_nbatches", type=int, default=15)
     parser.add_argument("--learning_rate", type=float, default=0.0001)
     parser.add_argument("--softmax_scale", type=float, default=10)
 
-    parser.add_argument("--loss_weight", type=float, default=1.6)
+    parser.add_argument("--loss_weight", type=float, default=1.5)
 
     return parser.parse_args()
 
