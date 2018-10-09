@@ -7,7 +7,7 @@ import tensorflow as tf
 
 EPSILON = 10e-8
 
-SEG_POINTCLOUDS_PATH = '/scratch/thesis/data/segmented/oldSeg'
+SEG_POINTCLOUDS_PATH = '/scratch/thesis/data/segmented/newSeg'
 GROUNDTRUTH_PATH = '/scratch/thesis/data/scenes/reconstruct_gt/full_test'
 
 
@@ -246,7 +246,8 @@ def classification_accuracy(y_true, y_pred):
             tf.boolean_mask(labels_true, occupied_mask),
             tf.boolean_mask(labels_pred, occupied_mask)), dtype=tf.float32))
 
-        full_accuracy = np.sum(labels_true == labels_pred) / labels_true.size
+        correct = tf.equal(labels_pred, labels_true)
+        full_accuracy = tf.reduce_mean(tf.cast(correct, tf.float32))
 
     return freespace_accuracy, occupied_accuracy, semantic_accuracy, full_accuracy
 

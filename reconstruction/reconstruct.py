@@ -87,7 +87,7 @@ def evaluate(data, data_gt, model_path, params, scene_name):
             feed_dict=feed_dict
         )
 
-        stats = {"scene": scene_name , "freespace_accuracy": freespace_accuracy, "occupied_accuracy": occupied_accuracy, "semantic_accuracy": semantic_accuracy, full_accuracy: full_accuracy}
+        stats = {"scene": scene_name , "freespace_accuracy": freespace_accuracy, "occupied_accuracy": occupied_accuracy, "semantic_accuracy": semantic_accuracy, "full_accuracy": full_accuracy}
         add_stat(pd.DataFrame(stats, index=[0]))
 
         return np.squeeze(pred[0])
