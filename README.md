@@ -1,14 +1,14 @@
-# Bachelor Thesis
+# Bachelor Thesis: Learned 3D Semantic Segmentation
 
-One Paragraph of project description goes here
+This repository contains the corresponding code of the Bachelor Thesis "Learned 3D Semantic Segmentation". 
 
 ## Getting Started
 
-These instructions will get you a copy of the project up and running on your local machine. Make sure that you have downloaded the ScanNet dataset or have at least already preprocessed scene files at hand.
+These instructions will get you a copy of the project up and running on your local machine. Make sure that you have downloaded the ScanNet dataset or have already preprocessed scene files at hand. 
 
-### Prerequisites
+### Overall Structure of this repository
 
-Overall Structure
+This repository contains 3 major folders
 
 Data folder: Contains everthing related to the dataset & preprocessing
     - dataset.py: 
