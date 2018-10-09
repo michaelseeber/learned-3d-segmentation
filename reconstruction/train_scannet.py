@@ -180,13 +180,6 @@ def update_primal(u, m, l, d, tau, level):
             w1 = tf.get_variable("w1")
             w2 = tf.get_variable("w2")
 
-        # u_shape = tf.shape(u[level])
-        # batch_size = u_shape[0]
-        # nrows = u_shape[1]
-        # ncols = u_shape[2]
-        # nslices = u_shape[3]
-        # nclasses = u_shape[4]
-
         _, nrows, ncols, nslices, nclasses = \
             u[level].get_shape().as_list()
         batch_size = tf.shape(u[level])[0]
@@ -276,16 +269,18 @@ def categorical_crossentropy(y_true, y_pred, params):
             -tf.reduce_sum(tf.boolean_mask(cross_entropy, occupied_mask)) / \
              (tf.reduce_sum(tf.cast(occupied_mask, tf.float32)) + EPSILON)
 
+        #weight occupied space more
         cross_entropy = freespace_cross_entropy + params["loss_weight"]* occupied_cross_entropy
 
     return cross_entropy
 
 
+#create datacost from voxelgrid
 def datacost_creation(input, nclasses):
     
+    #model described in thesis
     pointwise = conv_weight_variable(
          "w1_datacost", [1, 1, 1, nclasses+1, nclasses], stddev=0.01)
-
     enlarge1 = conv_weight_variable(
          "w2_datacost", [3, 3, 3, nclasses, 32], stddev=0.01)   
     enlarge2 = conv_weight_variable(
@@ -454,8 +449,6 @@ def pointnet_data_generator(scene_list_path, params):
     for i, scene_name in enumerate(scene_list):
         print("Loading {} [{}/{}]".format(scene_name, i + 1, len(scene_list)))
 
-        # if len(datacosts) == 5:
-        #     break
         datacost_path = os.path.join(SEG_POINTCLOUDS_PATH,"voxelgrid_" + scene_name +".npz")
         groundtruth_path = os.path.join(GROUNDTRUTH_PATH, scene_name, "converted",
                                     "groundtruth_model/probs.npz")
@@ -481,7 +474,6 @@ def pointnet_data_generator(scene_list_path, params):
         print(datacost_path)
         print(datacost.shape)
         assert datacost.shape[3] == nclasses+1
-        # assert datacost.shape == groundtruth.shape
 
         datacosts.append(datacost)
         groundtruths.append(groundtruth)

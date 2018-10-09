@@ -25,9 +25,10 @@ NUM_CLASSES = 21
 NUM_POINT = 8192
 BATCH_SIZE = 70
 TEST_WHOLE_SCENE = dataset.WholeScene(num_classes = NUM_CLASSES, split="test")
-MODEL_PATH = "/scratch/thesis/segmentation/models_collection/full_nodropout_newrotation/best_model_epoch_2690.ckpt"
+MODEL_PATH = "/scratch/thesis/segmentation/models_collection/full_nodropout_newrotation/model.ckpt"
 VOXELIZE = True
 
+#Calibration weights for each subset
 CALI_FULL = np.array([0.36156243, 0.24771595, 0.04908998, 0.02638608, 0.01511378, 0.02427992, 0.02658031, 0.02507698, 0.00374616, 0.00318649, 0.00279083, 0.01415562, 0.0056411,  0.02418471, 0.00660461, 0.00198952, 0.00497217, 0.00343845, 0.02911088, 0.02357486])
 CALI_OFFICE= np.array([3.8166097e-01, 2.3369221e-01, 4.1152272e-02, 2.1433709e-02, 2.1445993e-02, 4.2433705e-02, 1.3419092e-02, 4.1446436e-02, 1.0824659e-03, 7.1552588e-04, 8.0008345e-04, 2.5485119e-02, 3.5791290e-03, 2.0537285e-02, 9.8955249e-03, 2.0925151e-04, 2.4702391e-03, 3.1861218e-03, 1.9040102e-02, 2.6779193e-02])
 CALI_HOTEL = np.array([0.36070746, 0.22689487, 0.03900941, 0.01969012, 0.01378298, 0.06537995, 0.00782773, 0.04289294, 0.00141417, 0.00111955, 0.00129543, 0.03584787, 0.00059217, 0.01818161, 0.01053767, 0.00055548, 0.00170424, 0.00262316, 0.01722222, 0.03178674])
@@ -36,29 +37,15 @@ CALI_APPARTMENTS = np.array([4.6007186e-01, 1.6846141e-01, 1.2115659e-02, 1.4227
 caliweights = CALI_FULL
 
 
-def conv_weight_variable(name, shape, stddev=1.0):
-    initializer = tf.truncated_normal_initializer(stddev=stddev)
-    return tf.get_variable(name, shape, dtype=tf.float32,
-                           initializer=initializer)
-
-
-def bias_weight_variable(name, shape, cval=0.0):
-    initializer = tf.constant_initializer(cval)
-    return tf.get_variable(name, shape, dtype=tf.float32,
-                           initializer=initializer)
-
-
-def conv3d(x, weights, name=None):
-    return tf.nn.conv3d(x, weights, name=name,
-                        strides=[1, 1, 1, 1, 1], padding="SAME")
-
 
 def segment():
     with tf.device('/gpu:0'):
         pointclouds_pl, labels_pl, sampleweights_pl = placeholder_inputs(BATCH_SIZE, NUM_POINT)
         is_training_pl = tf.placeholder(tf.bool, shape=())
         batch = tf.Variable(0)
+        #get model
         pred = get_model(NUM_CLASSES, pointclouds_pl, is_training_pl)
+        #get loss
         loss = get_loss(pred, labels_pl, sampleweights_pl)
 
     saver = tf.train.Saver() 
@@ -91,15 +78,16 @@ def segment():
            'loss': loss,
            'step': batch}
 
-        # eval_whole_scene_one_epoch(sess, ops)
+        #evaluate each scene from list
         for scene_name in scene_list:
             evaluated_scenes.append(eval_scene(scene_name, sess, ops))\
 
+    #save voxelgrid to disk, such that it can later be read
     if(VOXELIZE):
         for idx, scene in enumerate(evaluated_scenes):
             scene_name =  scene_list[idx]
-            np.savez_compressed(os.path.join('/scratch/thesis/data/segmented/oldSeg', 'voxelgrid_%s.npz' % scene_name), volume=scene)
-            print('Saving %s datacost to disk' % scene_name)
+            np.savez_compressed(os.path.join('/scratch/thesis/data/segmented/', 'voxelgrid_%s.npz' % scene_name), volume=scene)
+            print('Saving %s voxelgird to disk' % scene_name)
 
 
 
@@ -109,16 +97,17 @@ def eval_scene(scene_name, sess, ops):
     print('----')
 
     scene_id = dataset.scene_name_to_id(scene_name,split="test")
+    #get data for whole scene
     batch_data, gt_label, batch_smpw = TEST_WHOLE_SCENE[scene_id]
 
+    #Little hack to deal with different sizes of scenes. Variable size in model wasn't working. Fill spare entries with 0 and use just entries until scene_end
     scene_end = batch_data.shape[0]
-
     if batch_data.shape[0]<BATCH_SIZE:
         batch_data = np.concatenate((batch_data, np.zeros((BATCH_SIZE-scene_end,NUM_POINT,6))))
         gt_label = np.concatenate((gt_label, np.zeros((BATCH_SIZE-scene_end,NUM_POINT))))
         batch_smpw = np.concatenate((batch_smpw, np.zeros((BATCH_SIZE-scene_end,NUM_POINT))))
     else:
-        print("error")
+        print("error: batch size not large enough")
 
     feed_dict = {ops['pointclouds_pl']: batch_data,
                  ops['is_training_pl']: is_training,
@@ -129,7 +118,7 @@ def eval_scene(scene_name, sess, ops):
     pred_class = np.argmax(pred_val, 2) # BxN
 
 
-    #Stats
+    #Calculate accuracy metrics and also store them
     total_seen_class = [0 for _ in range(NUM_CLASSES)]
     total_correct_class = [0 for _ in range(NUM_CLASSES)]
     correct = np.sum((pred_class == gt_label) & (gt_label>0) & (batch_smpw>0)) # evaluate only on 20 categories but not unknown
@@ -144,6 +133,7 @@ def eval_scene(scene_name, sess, ops):
     per_class = []
     for l in range(1,NUM_CLASSES):
 	    per_class.append((l,total_correct_class[l]/float(total_seen_class[l])))
+    #summary for csv file
     general_stats = {"scene": scene_name , "accuracy": accuracy, "avg_class_accuray": avg_class_acc, "weighted_class_accuracy": caliacc}
     per_class_stats = {x[0]:x[1:] for x in per_class}
     data = {**general_stats, **per_class_stats}
@@ -156,7 +146,6 @@ def eval_scene(scene_name, sess, ops):
             color = label_util.label2color(pred_class[b][i], converted=True)
             fout.write('v %f %f %f %d %d %d\n' % (batch_data[b,i,0], batch_data[b,i,1], batch_data[b,i,2], color[0], color[1], color[2]))
     fout.close()
-
     fout = open(os.path.join(BASE_DIR, 'results', 'groundtruth_%s.obj' % scene_name), 'w+')
     for b in range(scene_end):
         for i in range(batch_data.shape[1]):
@@ -171,12 +160,11 @@ def eval_scene(scene_name, sess, ops):
         # use resolutionof 5 cm, bounding box not regular
         voxelgrid_id = cloud.add_structure("voxelgrid", sizes=[0.05, 0.05, 0.05], bb_cuboid=False)
         voxelgrid = cloud.structures[voxelgrid_id]
-        # fill voxelgrid with probabilities of points in it ->numerical issues.....
+        # fill voxelgrid with probabilities of points in it
         vgrid_dim = voxelgrid.x_y_z
         flat_pred_class = pred_class[0:scene_end,:].reshape(-1)
-        # +1 for freespace and another one for density (amount of points in each voxel)
+        # +1 for freespace and another +1 for density (amount of points in each voxel)
         vox_prob = np.zeros(shape=(vgrid_dim[0], vgrid_dim[1], vgrid_dim[2], NUM_CLASSES+2))
-        # vox_prob = np.zeros(shape=(vgrid_dim[0], vgrid_dim[1], vgrid_dim[2], NUM_CLASSES+1))
         vox_prob[:,:,:, NUM_CLASSES] = 1 #freespace
         voxels = voxelgrid.voxel_n
         filled_vox = np.unique(voxels)
@@ -196,6 +184,7 @@ def eval_scene(scene_name, sess, ops):
         return vox_prob
 
 
+#helper function to store all accuracy metrics
 stats_dataframe = pd.DataFrame()
 def add_stat(data):
     global stats_dataframe

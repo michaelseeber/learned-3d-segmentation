@@ -11,6 +11,7 @@ PICKLE_NAME="full_"
 PICKLE_INFO_PATH = "/scratch/thesis/data/scenes/full"
 
 
+#convert scene name to id
 def scene_name_to_id(name, split):
     scene_list = []
     with open(os.path.join(PICKLE_INFO_PATH, PICKLE_NAME + split +'.txt'), "r") as fid:
@@ -19,12 +20,10 @@ def scene_name_to_id(name, split):
             if line:
                 scene_list.append(line)
 
-    
-
     return scene_list.index(name)
 
         
-
+#Block class used during training of segmentation
 class Block():
     def __init__(self, num_classes, npoints=8192, split='train'):
         self.npoints = npoints
@@ -34,6 +33,7 @@ class Block():
         with open(os.path.join(DATA_PATH, PICKLE_NAME + '%s.pickle'%(split)), "rb") as f:
             self.allpoints, self.alllabels = pickle.load(f)
 
+        #if train split set labelweights for weighted loss function
         if split=='train':
             labelweights = np.zeros(self.num_classes)
             for seg in self.alllabels:
@@ -41,13 +41,14 @@ class Block():
                 labelweights += tmp
             labelweights = labelweights.astype(np.float32)
             labelweights = labelweights/np.sum(labelweights)
-            self.labelweights = 1/np.log(1.2+labelweights)
+            self.labelweights = 1/np.log(1.2+labelweights) #ln to avoid divison by zero + 1.2 to make sure positvive
         elif split=='test':
             self.labelweights = np.ones(self.num_classes)
 
     def __getitem__(self, index):
         point_set = self.allpoints[index]
         semantic_seg = np.squeeze(self.alllabels[index])
+        #get maximum and minimum coordinates of scene
         coordmax = np.max(point_set[:,0:3], axis=0)
         coordmin = np.min(point_set[:,0:3], axis=0)
         samplemin = np.maximum(coordmax-[1.5,1.5,3.0], coordmin)
@@ -55,10 +56,10 @@ class Block():
         samplesize = np.minimum(coordmax-samplemin,[1.5,1.5,3.0])
         samplesize[2] = coordmax[2]-coordmin[2]
         isvalid = False
-        for i in range(10):
+        for i in range(10): #10 tries to find valid block, normally first is fine
             currcenter = point_set[np.random.choice(len(semantic_seg),1)[0],0:3]
-            currmin = currcenter-[0.75,0.75,1.5]
-            currmax = currcenter+[0.75,0.75,1.5]
+            currmin = currcenter-[0.75,0.75,1.5] #size of block in total 1,5x1,5x3
+            currmax = currcenter+[0.75,0.75,1.5] #size of block in total 1,5x1,5x3
             currmin[2] = coordmin[2]
             currmax[2] = coordmax[2]
             currchoice = np.sum((point_set[:,0:3] >=(currmin-0.2))*(point_set[:,0:3] <=(currmax+0.2)),axis=1)==3
@@ -83,7 +84,9 @@ class Block():
         return len(self.allpoints)
 
 
+#class for extracting whole scene
 class WholeScene():
+    #similar to above
     def __init__(self, num_classes, npoints=8192, split='train'):
         self.npoints = npoints
         self.num_classes = num_classes
@@ -92,6 +95,7 @@ class WholeScene():
         with open(os.path.join(DATA_PATH, PICKLE_NAME + '%s.pickle'%(split)), "rb") as f:
             self.allpoints, self.alllabels = pickle.load(f)
 
+        #if train split set labelweights for weighted loss function - actually never used for training just there for completness
         if split=='train':
             labelweights = np.zeros(self.num_classes)
             for seg in self.alllabels:
@@ -99,7 +103,7 @@ class WholeScene():
                 labelweights += tmp
             labelweights = labelweights.astype(np.float32)
             labelweights = labelweights/np.sum(labelweights)
-            self.labelweights = 1/np.log(1.2+labelweights)
+            self.labelweights = 1/np.log(1.2+labelweights) #ln to avoid divison by zero + 1.2 to make sure positvive
         elif split=='test':
             self.labelweights = np.ones(self.num_classes)
     def __getitem__(self, index):
@@ -113,6 +117,7 @@ class WholeScene():
         semantic_segs = list()
         sample_weights = list()
         isvalid = False
+        #for each subvolume extract
         for i in range(nsubvolume_x):
             for j in range(nsubvolume_y):
                 curmin = coordmin+[i*1.5,j*1.5,0]

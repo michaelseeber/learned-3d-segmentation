@@ -8,7 +8,7 @@ from skimage.measure import marching_cubes_lewiner
 import plyfile
 import pandas as pd
 
-
+#adapt to your setup
 SEG_POINTCLOUDS_PATH = '/scratch/thesis/data/segmented/newSeg'
 GROUNDTRUTH_PATH = '/scratch/thesis/data/scenes/reconstruct_gt/full_test'
 SCENE_LIST_PATH = '/scratch/thesis/data/scenes/reconstruct_gt/full_test/list_validation.txt'
@@ -95,10 +95,12 @@ def evaluate(data, data_gt, model_path, params, scene_name):
 
 def reconstruct(scene_name):
 
+    #load datacost
     datacost_path = os.path.join(SEG_POINTCLOUDS_PATH,"voxelgrid_" + scene_name +".npz")
     datacost_data = np.load(datacost_path)
     datacost = datacost_data["volume"]
 
+    #load groundtruth
     groundtruth_path = os.path.join(GROUNDTRUTH_PATH, scene_name, "converted",
                                     "groundtruth_model/probs.npz")
     groundtruth = np.load(groundtruth_path)["probs"]
@@ -107,6 +109,8 @@ def reconstruct(scene_name):
     d_dims= datacost.shape
     groundtruth = groundtruth[0:d_dims[0],0:d_dims[1], 0:d_dims[2], 0:d_dims[3]]
 
+
+    #make size divideable by 4, because of multi-scale optimization
     params = {
         "nrows": int(datacost.shape[0] / 4)*4,
         "ncols": int(datacost.shape[1] / 4)*4,
@@ -123,12 +127,15 @@ def reconstruct(scene_name):
 
     prediction = evaluate(datacost, groundtruth, args.model_path, params, scene_name)
     
+    #if results path not exists create it
     if not os.path.exists(os.path.join(RESULTS_PATH, scene_name)):
         os.makedirs(os.path.join(RESULTS_PATH, scene_name))
 
+    #if true output mesh for each label
     if(mesh_per_label):
         label_names = {}
         label_colors = {}
+        #get label color mapping
         with open('/scratch/thesis/data/scenes/reconstruct_gt/labels.txt', "r") as fid:
             for line in fid:
                 line = line.strip()
@@ -139,6 +146,7 @@ def reconstruct(scene_name):
                 color = tuple(map(int, line.split()[3:]))
                 label_names[label] = name
                 label_colors[label] = color
+        #for eah label extract mesh
         for label in np.unique(prediction):
             if(label != 0):
                 path = os.path.join(RESULTS_PATH, scene_name, label_names[str(label)] + '_predicted.ply')
@@ -149,7 +157,8 @@ def reconstruct(scene_name):
                 label_pred[label_pred!=100] = 0
                 
                 extract_mesh_colored(path, label_pred, color=color)
-    # 21 freespace
+    
+    #output whole prediciton -> 21 equals freespace
     prediction[prediction!=21] = 1
     prediction[prediction==21] = 0
     extract_mesh_colored(os.path.join(RESULTS_PATH, scene_name, "predicted.ply"), prediction)
@@ -167,6 +176,7 @@ def parse_args():
 
     return parser.parse_args()
 
+#function to extract mesh
 def extract_mesh_colored(path, volume, color=None, level=0.5,
                                 step_size=1.0, gradient_direction="ascent"):
     if level > volume.max() or level < volume.min():
@@ -198,7 +208,7 @@ def extract_mesh_colored(path, volume, color=None, level=0.5,
 
     plyfile.PlyData([ply_verts, ply_faces]).write(path)
 
-
+#helper function for storing accuracy metrics
 stats_dataframe = pd.DataFrame()
 def add_stat(data):
     global stats_dataframe
@@ -209,6 +219,7 @@ def add_stat(data):
 if __name__ == "__main__":
     args = parse_args()
 
+    #reconstruct from test list
     scene_list = []
     with open(SCENE_LIST_PATH, "r") as fid:
         for line in fid:
@@ -216,8 +227,11 @@ if __name__ == "__main__":
             if line:
                 scene_list.append(line)
 
+    #uncomment to reconstruct single scene
     # scene_list = ["scene0000_01"]
 
     for scene_name in scene_list:
+        #reconstruct scene
         reconstruct(scene_name)
+    #save stats to disk
     stats_dataframe.to_csv(os.path.join(RESULTS_PATH, 'results.csv'))

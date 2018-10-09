@@ -46,7 +46,7 @@ ALL_LABEL_COLORS = (
 )
 
 
-
+#labels we used - NYU
 CONVERTED_LABEL_COLORS = (
     ("unannotated", (0, 0, 0)), 
     ("wall", (190,153,112)),
@@ -80,18 +80,22 @@ ALL_COLORS = tuple(color for _, color in ALL_LABEL_COLORS)
 CONVERTED_CLASSES = tuple(label for label, _ in CONVERTED_LABEL_COLORS)
 CONVERTED_COLORS = tuple(color for _, color in CONVERTED_LABEL_COLORS)
 
+#label to color
 def label2color(label, converted = False):
     if(converted == True):
         return CONVERTED_COLORS[int(label)]
     else:
         return ALL_COLORS[label]
 
+#label to class
 def label2class(label, converted = False):
     if(converted == True):
         return CONVERTED_CLASSES[int(label)]
     else:
         return ALL_CLASSES[label]
 
+
+#color to label
 def color2label(color, converted = False):
     if(converted == True):
         return CONVERTED_COLORS.index(color)

@@ -58,6 +58,7 @@ BN_DECAY_CLIP = 0.99
 
 NUM_CLASSES = 21
 
+#setup data provider
 TRAIN_DATA = dataset.Block(num_classes = NUM_CLASSES, npoints= NUM_POINT, split = "train")
 TEST_DATA = dataset.Block(num_classes = NUM_CLASSES, npoints= NUM_POINT, split = "test")
 
@@ -213,6 +214,7 @@ def train_one_epoch(sess, ops, train_writer):
     
     log_string('----')
     
+    #shuffle data
     idxs = np.arange(len(TRAIN_DATA))
     np.random.shuffle(idxs)
 
@@ -228,7 +230,9 @@ def train_one_epoch(sess, ops, train_writer):
         start_idx = batch_idx * BATCH_SIZE
         end_idx = (batch_idx+1) * BATCH_SIZE
 
+        #get batch 
         batch_data, batch_label, batch_smpw = get_batch(TRAIN_DATA, idxs, start_idx, end_idx, with_dropout=True)
+        #rotate data
         batch_data[:,:,0:3] = provider.rotate_point_cloud(batch_data[:,:,0:3])
         
         feed_dict = {ops['pointclouds_pl']: batch_data,
