@@ -4,4 +4,4 @@
 --model_path required
 --nclasses required                        
 
-python3 train_scannet.py --scene_path /scratch/thesis/reconstruction/scenes --scene_train_list_path /scratch/thesis/reconstruction/scenes/list.txt --scene_val_list_path scratch/thesis/reconstruction/scenes/list.txt --model_path /scratch/thesis/reconstruction/model --nclasses 42 --epoch_npasses 50 --nepochs 10
+python3 train_scannet.py --scene_path /scratch/thesis/reconstruction/scenes --scene_train_list_path /scratch/thesis/reconstruction/scenes/train_list.txt --scene_val_list_path scratch/thesis/reconstruction/scenes/val_list.txt --model_path /scratch/thesis/reconstruction/model --nclasses 42 --epoch_npasses 50 --nepochs 10
