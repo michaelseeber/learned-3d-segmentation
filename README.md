@@ -4,16 +4,14 @@ This repository contains the corresponding code of the Bachelor Thesis "Learned 
 
 ## Getting Started
 
-These instructions will get you a copy of the project up and running on your local machine. Make sure that you have downloaded the ScanNet dataset or have already preprocessed scene files at hand. 
+These instructions will get you a copy of the project up and running on your local machine. Make sure that you have downloaded the ScanNet dataset or have already preprocessed scene files at hand.
 
 ### Overall Structure of this repository
 
-This repository contains 3 major folders
-
 Data folder: Contains everthing related to the dataset & preprocessing
-    - dataset.py: 
-    - preprocessing folder: everything needed to do the preprocessing steps
-    - scenes: contains a subfolder with the whole scannet. Furthermore the preprocessed files for segmentation as well as the generates reconstruct GT are in this folder.
+*dataset.py:
+*preprocessing folder: everything needed to do the preprocessing steps
+*scenes: contains a subfolder with the whole scannet. Furthermore the preprocessed files for segmentation as well as the generates reconstruct GT are in this folder.
 
 Reconstruction folder: Contains everything related to reconstruction
     -model: 
