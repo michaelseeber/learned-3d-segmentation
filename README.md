@@ -30,3 +30,17 @@ These instructions will get you a copy of the project up and running on your loc
 * (results) folder: Without modifications the reconstruct.py saves the visualizations of the reconstructionsthis folder
     
 ## Run the code
+
+Segmentation Part:
+* Run `preprocessing/preprocess_scannet.py` to perpare .pickle files that contain all the information used by the segmentation part. Don't forget to modify the path to the ScanNet directory. Also requires a list of scenes, which should be preprocessed. Continue once you have train.pickle containing the training scenes and a test.pickle containing the test scenes.
+
+* Modify the the configuration variables inside `segmentation/train_segmentation.py` to match your folder setup. Then run this file to train the segmentation network.
+
+* When training finished you can execute `segmentation/segment.py` (once again adjust the configuration variables) to create the voxelgrids.
+
+Reconstruction Part:
+* To create the grountruth for the reconstruction follow the steps noted inside `preprocessing/reconstruction/info.txt`.
+* Once complete, you have the segmented voxelgrids as well as the groundtruth reconstructions. Therefore the last step is to adjust the configuration variables inside `reconstruction/train_scannet` and then run it. A sample run command with all the required parameters can be found in `reconstruction/run.txt`
+* After training simply run `reconstruction/reconstruct.py` to obtain the results from our thesis.
+
+
