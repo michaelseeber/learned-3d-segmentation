@@ -1,4 +1,4 @@
-<img src="https://github.com/michaelseeber/thesis/blob/master/title_figure.png" height="300">
+<img src="https://github.com/michaelseeber/learned-3d-segmentation/blob/master/title_figure.png" height="300">
 
 # Bachelor Thesis: <br /> Learned 3D Semantic Segmentation using Point Clouds
 
