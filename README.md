@@ -1,8 +1,10 @@
-# Bachelor Thesis: Learned 3D Semantic Segmentation
+<img src="https://github.com/michaelseeber/thesis/blob/master/title_figure.png" height="300">
 
-This repository contains the code of the bachelor thesis "Learned 3D Semantic Segmentation".
+# Bachelor Thesis: <br /> Learned 3D Semantic Segmentation using Point Clouds
 
-The thesis is available [here](Bachelor_Thesis_Michael_Seeber.pdf) and slides providing an overview can be found [here](Presentation_Michael_Seeber.pptx)
+This repository contains the source code of the bachelor thesis "Learned 3D Semantic Segmentation using Point Clouds" by Michael Seeber.
+
+The thesis itself is available [**here**](Bachelor_Thesis_Michael_Seeber.pdf). Additionally [these slides](Presentation_Michael_Seeber.pptx) provide an overview and present the key findings.
 
 ## Getting Started
 
